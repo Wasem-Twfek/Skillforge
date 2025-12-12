@@ -1,0 +1,53 @@
+{
+  "name": "skillforge",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "node scripts/create-pwa-icons.cjs && tsc -b && vite build",
+    "lint": "eslint .",
+    "preview": "vite preview",
+    "test": "vitest",
+    "test:coverage": "vitest run --coverage",
+    "cleanup": "node scripts/cleanup-report.js"
+  },
+  "dependencies": {
+    "@tanstack/react-query": "^5.71.10",
+    "@types/react-router-dom": "^5.3.3",
+    "axios": "^1.8.4",
+    "date-fns": "^4.1.0",
+    "framer-motion": "^12.6.3",
+    "lucide-react": "^0.487.0",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "react-router-dom": "^6.22.1",
+    "zustand": "^5.0.3"
+  },
+  "devDependencies": {
+    "@testing-library/jest-dom": "^6.1.4",
+    "@testing-library/react": "^14.1.2",
+    "@testing-library/user-event": "^14.5.1",
+    "@types/node": "^22.14.0",
+    "@types/react": "^18.2.55",
+    "@types/react-dom": "^18.2.19",
+    "@typescript-eslint/eslint-plugin": "^6.21.0",
+    "@typescript-eslint/parser": "^6.21.0",
+    "@vitejs/plugin-react": "^4.3.4",
+    "autoprefixer": "^10.4.17",
+    "depcheck": "^1.4.7",
+    "eslint": "^8.57.1",
+    "eslint-plugin-react": "^7.37.5",
+    "eslint-plugin-react-hooks": "^4.6.2",
+    "eslint-plugin-react-refresh": "^0.4.20",
+    "jsdom": "^22.1.0",
+    "postcss": "^8.4.35",
+    "sharp": "^0.34.0",
+    "tailwindcss": "^3.4.1",
+    "ts-prune": "^0.10.3",
+    "typescript": "~5.3.3",
+    "vite": "^5.4.19",
+    "vite-plugin-pwa": "^1.0.0",
+    "vitest": "^0.34.6"
+  }
+}

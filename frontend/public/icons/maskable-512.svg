@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="512" height="512" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- Use a larger circle to account for the maskable icon safe zone -->
+  <circle cx="256" cy="256" r="256" fill="#3b82f6"/>
+  <!-- Center the 'SF' in the safe zone -->
+  <path d="M150 136h196v40H190v136h126v40H150V136z" fill="white"/>
+  <path d="M190 176h126v40H190v-40z" fill="white"/>
+</svg> 

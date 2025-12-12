@@ -1,0 +1,5 @@
+build/
+public/icons/*.js
+scripts/*.js
+skillforge-backend/build/
+*.cjs
