@@ -1,0 +1,52 @@
+/* Fix for text selection issues */
+body {
+  -webkit-user-select: text;
+  -moz-user-select: text;
+  -ms-user-select: text;
+  user-select: text;
+  cursor: default;
+}
+
+/* Ensure text is selectable but not editable */
+p, h1, h2, h3, h4, h5, h6, span, div, a, li {
+  -webkit-user-select: text;
+  -moz-user-select: text;
+  -ms-user-select: text;
+  user-select: text;
+  cursor: default;
+}
+
+/* Only show text cursor when hovering over selectable text */
+p:hover, h1:hover, h2:hover, h3:hover, h4:hover, h5:hover, h6:hover, span:hover, a:hover, li:hover {
+  cursor: text;
+}
+
+/* Ensure inputs and textareas remain editable */
+input, textarea, [contenteditable="true"] {
+  cursor: text;
+  -webkit-user-select: text;
+  -moz-user-select: text;
+  -ms-user-select: text;
+  user-select: text;
+}
+
+/* Fix for buttons and interactive elements */
+button, a, .clickable {
+  cursor: pointer;
+}
+
+/* Prevent text selection on double-click for headings */
+h1, h2, h3, h4, h5, h6 {
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+  user-select: none;
+}
+
+/* Allow text selection for paragraphs and content */
+p, .selectable-text {
+  -webkit-user-select: text;
+  -moz-user-select: text;
+  -ms-user-select: text;
+  user-select: text;
+}

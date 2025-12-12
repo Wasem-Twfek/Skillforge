@@ -1,0 +1,111 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+  directUrl = env("DATABASE_URL")
+}
+
+model User {
+  id            String           @id @default(uuid())
+  email         String          @unique
+  name          String
+  password      String?
+  googleId      String?         @unique
+  picture       String?
+  bio          String?
+  avatar       String?
+  createdAt    DateTime        @default(now())
+  updatedAt    DateTime        @updatedAt
+  enrollments   Enrollment[]
+  progress      LessonProgress[]
+  attempts      Attempt[]
+  coursesCreated Course[]
+}
+
+model Course {
+  id          String       @id @default(uuid())
+  title       String
+  description String
+  thumbnail   String
+  category    String
+  level       String
+  instructorId String
+  instructor   User        @relation(fields: [instructorId], references: [id])
+  lessons     Lesson[]
+  enrollments Enrollment[]
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+}
+
+model Lesson {
+  id          String           @id @default(uuid())
+  title       String
+  description String
+  content     String
+  videoUrl    String?
+  courseId    String
+  course      Course          @relation(fields: [courseId], references: [id])
+  order       Int
+  quiz        Quiz?
+  progress    LessonProgress[]
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+}
+
+model Enrollment {
+  id         String     @id @default(uuid())
+  userId     String
+  user       User       @relation(fields: [userId], references: [id])
+  courseId   String
+  course     Course     @relation(fields: [courseId], references: [id])
+  progress   LessonProgress[]
+  enrolledAt DateTime   @default(now())
+  completedAt DateTime?
+
+  @@unique([userId, courseId])
+}
+
+model LessonProgress {
+  id          String   @id @default(uuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id])
+  lessonId    String
+  lesson      Lesson   @relation(fields: [lessonId], references: [id])
+  completedAt DateTime @default(now())
+  enrollmentId String
+  enrollment   Enrollment @relation(fields: [enrollmentId], references: [id])
+
+  @@unique([userId, lessonId])
+}
+
+model Quiz {
+  id        String   @id @default(uuid())
+  title     String
+  questions Json
+  lesson    Lesson   @relation(fields: [lessonId], references: [id])
+  lessonId  String   @unique
+  attempts  Attempt[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Attempt {
+  id        String   @id @default(uuid())
+  userId    String
+  quizId    String
+  score     Int
+  answers   Json
+  user      User     @relation(fields: [userId], references: [id])
+  quiz      Quiz     @relation(fields: [quizId], references: [id])
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}

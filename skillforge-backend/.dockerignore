@@ -1,0 +1,29 @@
+# VCS
+.git
+.gitignore
+
+# Dependencies and builds
+node_modules
+dist
+build
+.cache
+.turbo
+*.tsbuildinfo
+
+# Tests/coverage
+coverage
+
+# OS/Editor
+.DS_Store
+Thumbs.db
+*.log
+npm-debug.log*
+yarn-error.log*
+
+# Prisma local files
+prisma/dev.db
+
+# Env
+.env
+.env.local
+

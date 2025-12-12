@@ -1,0 +1,76 @@
+version: '3.8'
+
+services:
+  # PostgreSQL Database
+  postgres:
+    image: postgres:16-alpine
+    container_name: skillforge-postgres
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      POSTGRES_DB: ${POSTGRES_DB:-skillforge}
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  # Redis for caching (used by ioredis in backend)
+  redis:
+    image: redis:alpine
+    container_name: skillforge-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+    restart: unless-stopped
+
+  # Backend service
+  backend:
+    build:
+      context: ./skillforge-backend
+      dockerfile: Dockerfile
+    container_name: skillforge-backend
+    environment:
+      - NODE_ENV=production
+      - DOCKER=true
+      - DATABASE_URL=postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@postgres:5432/${POSTGRES_DB:-skillforge}?schema=public
+      - REDIS_URL=redis://redis:6379
+      - PORT=3001
+      - JWT_SECRET=${JWT_SECRET:-your_jwt_secret}
+      - FRONTEND_URL=http://localhost
+      - GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID:-}
+      - GOOGLE_CLIENT_SECRET=${GOOGLE_CLIENT_SECRET:-}
+      - GOOGLE_REDIRECT_URI=${GOOGLE_REDIRECT_URI:-http://localhost/auth/google/callback}
+    ports:
+      - "3001:3001"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    restart: unless-stopped
+    command: sh -c "npx prisma generate && npx prisma migrate deploy && node dist/server.js"
+
+  # Frontend service with Nginx
+  frontend:
+    build:
+      context: ./
+      dockerfile: ./frontend/Dockerfile
+    container_name: skillforge-frontend
+    volumes:
+      - ./nginx.conf:/etc/nginx/conf.d/default.conf
+    ports:
+      - "80:80"
+    depends_on:
+      - backend
+    restart: unless-stopped
+
+volumes:
+  postgres-data:
+  redis-data:

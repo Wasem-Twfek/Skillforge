@@ -1,0 +1,33 @@
+# VCS
+.git
+.gitignore
+
+# Node & build outputs
+node_modules
+**/node_modules
+**/dist
+**/build
+**/.vite
+**/.cache
+**/.turbo
+**/*.tsbuildinfo
+
+# Test/coverage
+**/coverage
+
+# OS/Editor
+.DS_Store
+Thumbs.db
+*.log
+npm-debug.log*
+yarn-error.log*
+
+# Env files (handled via compose)
+.env
+**/.env
+.env.local
+**/.env.local
+
+# Misc
+.tmp
+
