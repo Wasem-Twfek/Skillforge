@@ -34,12 +34,12 @@ FRONTEND_URL=http://localhost:3000
 JWT_SECRET=your-secure-jwt-secret-key-goes-here
 
 # Google OAuth Configuration
-GOOGLE_CLIENT_ID=746106499332-j5s5ecd56gohlup1acg1lvor7ggeo01j.apps.googleusercontent.com
-GOOGLE_CLIENT_SECRET=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
+GOOGLE_CLIENT_ID=
+GOOGLE_CLIENT_SECRET=
 GOOGLE_CALLBACK_URL=http://localhost:3001/auth/google/callback
 
 # Session Configuration
-SESSION_SECRET=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
+SESSION_SECRET=
 ```
 
 **Frontend (.env file in skillforge/):**
