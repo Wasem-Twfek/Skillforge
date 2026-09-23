@@ -85,7 +85,7 @@ PHASE 2 GATE:
 
 ---
 
-## PHASE 3 — Backend architecture and hardening
+## PHASE 3 — Backend architecture and hardening (COMPLETE)
 
 - Objective: consolidate PrismaClient to the existing singleton
   (`src/lib/prisma.ts` is the pattern), add minimal hardening the repository

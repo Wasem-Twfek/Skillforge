@@ -1,10 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
-import { PrismaClient } from '@prisma/client';
+import prisma from '../lib/prisma';
 import { config } from '../config/config';
-
-// Create Prisma client instance
-const prisma = new PrismaClient();
 
 // Define the shape of the user we attach to the request (matches the select below)
 type AuthenticatedUser = {

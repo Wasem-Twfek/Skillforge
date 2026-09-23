@@ -1,10 +1,9 @@
 import express from 'express';
-import { PrismaClient } from '@prisma/client';
+import prisma from '../lib/prisma';
 import { Request, Response, NextFunction } from 'express';
 import { authenticate } from '../middleware/auth';
 
 const router = express.Router();
-const prisma = new PrismaClient();
 
 // Get all courses
 router.get('/', async (req, res) => {
@@ -36,7 +35,7 @@ router.get('/', async (req, res) => {
 
     res.json(updatedCourses);
   } catch (error) {
-    console.error('Error fetching courses:', error);
+    console.error('Error fetching courses:', error instanceof Error ? error.message : 'unknown error');
     res.status(500).json({ error: 'Failed to fetch courses' });
   }
 });
@@ -90,7 +89,7 @@ router.get('/user', authenticate, async (req: Request, res) => {
 
     res.json(userCourses);
   } catch (error) {
-    console.error('Error fetching user courses:', error);
+    console.error('Error fetching user courses:', error instanceof Error ? error.message : 'unknown error');
     res.status(500).json({ error: 'Failed to fetch user courses' });
   }
 });
@@ -115,7 +114,7 @@ router.get('/:id', async (req, res) => {
     }
     res.json(course);
   } catch (error) {
-    console.error('Error fetching course:', error);
+    console.error('Error fetching course:', error instanceof Error ? error.message : 'unknown error');
     res.status(500).json({ error: 'Failed to fetch course' });
   }
 });
@@ -165,7 +164,7 @@ router.post('/:id/enroll', authenticate, async (req: Request, res) => {
       enrollment,
     });
   } catch (error) {
-    console.error('Error enrolling in course:', error);
+    console.error('Error enrolling in course:', error instanceof Error ? error.message : 'unknown error');
     res.status(500).json({ error: 'Failed to enroll in course' });
   }
 });
@@ -228,7 +227,7 @@ router.post('/:id/progress', authenticate, async (req: Request, res) => {
 
     res.json({ progress });
   } catch (error) {
-    console.error('Error updating course progress:', error);
+    console.error('Error updating course progress:', error instanceof Error ? error.message : 'unknown error');
     res.status(500).json({ error: 'Failed to update course progress' });
   }
 });

@@ -8,6 +8,7 @@ import userRoutes from './routes/users';
 import lessonRoutes from './routes/lessons';
 import quizRoutes from './routes/quizzes';
 import healthRoutes from './routes/health';
+import prisma from './lib/prisma';
 
 // In Docker, environment variables are passed directly, no need for dotenv
 // Load .env file only if we're not in Docker
@@ -52,6 +53,19 @@ const app = express();
 const port = process.env.PORT || 3001;
 const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
 
+// Do not advertise the framework in responses.
+// Baseline security headers without extra dependencies. No Content-Security-Policy:
+// GET /auth/callback serves inline-script HTML (see src/routes/auth.ts), which a
+// CSP without 'unsafe-inline' would break; CSP belongs to the Phase 5 auth work.
+app.disable('x-powered-by');
+app.use((req, res, next) => {
+  res.setHeader('X-Content-Type-Options', 'nosniff');
+  res.setHeader('X-Frame-Options', 'SAMEORIGIN');
+  res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
+  res.setHeader('X-DNS-Prefetch-Control', 'off');
+  next();
+});
+
 // Middleware
 app.use(cors({
   origin: frontendUrl,
@@ -59,7 +73,11 @@ app.use(cors({
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization']
 }));
-app.use(express.json());
+// Explicit body limit. The backend accepts only small JSON payloads (auth,
+// lesson/quiz content, quiz answers) and serves no file uploads (no
+// multer/multipart anywhere in src), so the 100kb Express default is locked in
+// explicitly rather than inherited silently.
+app.use(express.json({ limit: '100kb' }));
 
 // Minimal request log — never log headers, tokens, or user objects.
 app.use((req, _res, next) => {
@@ -108,12 +126,6 @@ app.get('/', (req, res) => {
 app.use('/health', healthRoutes);
 app.use('/auth', authRoutes);
 
-// API routes with authentication
-app.use('/api', (req, res, next) => {
-  console.log(`[${new Date().toISOString()}] API Request: ${req.method} ${req.originalUrl}`);
-  next();
-});
-
 // Public routes
 app.use('/api/courses', courseRoutes);
 
@@ -127,23 +139,43 @@ app.get('/api/protected', authenticate, (req, res) => {
   res.json({ message: 'This is a protected route', user: req.user });
 });
 
-// Health check endpoint
-app.get('/health', (req, res) => {
-  res.json({ status: 'ok' });
-});
-
-// Error handling middleware
-app.use((err: Error, req: express.Request, res: express.Response, next: express.NextFunction) => {
-  console.error(err.stack);
-  res.status(500).json({ error: 'Something went wrong!' });
-});
-
-// Catch-all route for unhandled routes
+// Catch-all route for unhandled routes (must precede the error handler so
+// errors thrown here still reach it)
 app.use('*', (req, res) => {
   console.error(`[${new Date().toISOString()}] Unhandled route: ${req.method} ${req.originalUrl}`);
   res.status(404).json({ error: 'Route not found' });
 });
 
-app.listen(port, () => {
+// Error handling middleware (last). Client responses stay generic; details go
+// to server logs only.
+app.use((err: Error, req: express.Request, res: express.Response, next: express.NextFunction) => {
+  console.error(err.stack);
+  res.status(500).json({ error: 'Something went wrong!' });
+});
+
+const server = app.listen(port, () => {
   console.log(`Server is running on port ${port}`);
-}); 
+});
+
+// Graceful shutdown so containers (SIGTERM) and local stops (SIGINT) close the
+// HTTP server and release Prisma connections instead of hanging open.
+function shutdown(signal: string) {
+  console.log(`Received ${signal}, shutting down gracefully...`);
+  server.close(() => {
+    prisma.$disconnect().then(() => {
+      console.log('Prisma disconnected, shutdown complete');
+      process.exit(0);
+    }).catch((error) => {
+      console.error('Error disconnecting Prisma:', error instanceof Error ? error.message : 'unknown error');
+      process.exit(1);
+    });
+  });
+  // Force exit if connections do not drain (e.g. long-lived keep-alive).
+  setTimeout(() => {
+    console.error('Shutdown timed out, forcing exit');
+    process.exit(1);
+  }, 10000).unref();
+}
+
+process.on('SIGTERM', () => shutdown('SIGTERM'));
+process.on('SIGINT', () => shutdown('SIGINT'));

@@ -1,24 +1,76 @@
 # PROJECT_STATE.md — SkillForge Persistent State
 
-CURRENT_PHASE: 2 (Backend build and startup)
-CURRENT_STATUS: PHASE 2 COMPLETE — reviewer PASS; STOP, do not start Phase 3 without explicit instruction
+CURRENT_PHASE: 3 (Backend architecture and hardening)
+CURRENT_STATUS: PHASE 3 COMPLETE — reviewer PASS; STOP, do not start Phase 4 without explicit instruction
 LAST_VERIFIED: 2026-09-23
-LAST_COMMIT: (Phase 2 closure commit) "Fix backend configuration and build startup"
+LAST_COMMIT: (Phase 3 closure commit) "Harden backend runtime and middleware"
 
 ---
 
 ## Current Phase
 
-Phase 2 — Backend build and startup. Make the backend compile, generate Prisma
-correctly, build, and start from `src/`. No architectural/contract redesign.
+Phase 3 — Backend architecture and hardening. Harden backend runtime behavior
+without redesigning APIs, auth, schema, or frontend.
 
 ## Current Objective
 
-Per `docs/PRODUCTION_PLAN.md` Phase 2: resolve the confirmed TS2307 build
-blocker with the smallest evidence-backed change, verify Prisma generation,
-prove local startup (`node dist/server.js` + `npm run dev`) serves `/` and
-`/health`, validate the Docker backend path as far as the environment permits.
-Then STOP and await approval for Phase 3.
+Per `docs/PRODUCTION_PLAN.md` Phase 3: consolidate PrismaClient to the
+`src/lib/prisma.ts` singleton, apply minimal evidenced hardening (headers,
+body limit, error/log safety, shutdown), remove verified dead backend files,
+dedupe `/health`. Then STOP and await approval for Phase 4.
+
+## Completed Work (Phase 3)
+
+- PrismaClient consolidation (verified, not assumed): live app-level
+  `new PrismaClient()` existed in `src/middleware/auth.ts:7`,
+  `src/routes/courses.ts:7`, `src/routes/health.ts:5` alongside the singleton
+  in `src/lib/prisma.ts`. All three now import the singleton; no query or
+  response logic touched. Survivors are justified: `src/scripts/migrate.ts`
+  (one-shot script with explicit `$connect`/`$disconnect`), `src/test/setup.ts`
+  and `src/routes/__tests__/auth.test.ts` (jest mocks requiring isolation).
+  Grep now shows exactly one live app factory (`src/lib/prisma.ts:13`).
+- `src/lib/prisma.ts`: query/info logging gated to development; production
+  and test run error-only (query logs are verbose and can carry row data).
+- `src/server.ts`: `app.disable('x-powered-by')` + dependency-free header
+  middleware (`X-Content-Type-Options: nosniff`, `X-Frame-Options: SAMEORIGIN`,
+  `Referrer-Policy: strict-origin-when-cross-origin`,
+  `X-DNS-Prefetch-Control: off`). No CSP on purpose: `GET /auth/callback`
+  serves inline-script HTML (`src/routes/auth.ts`), which a CSP would break;
+  CSP belongs to the Phase 5 auth work. No new dependencies added.
+- `src/server.ts`: explicit `express.json({ limit: '100kb' })`, locking in the
+  previous effective default — zero behavior change (no multer/multipart/
+  uploads exist anywhere in backend `src`, so no large-payload path exists).
+- `src/server.ts`: removed the unreachable static `GET /health`
+  (`{status:'ok'}`) shadowed by the DB-checking `healthRoutes`; removed the
+  duplicate `/api` request logger (every `/api/*` request was logged twice);
+  reordered catch-all 404 before the error middleware so 404-path errors are
+  caught. All route mounts, paths, and response shapes unchanged.
+- `src/server.ts`: graceful SIGTERM/SIGINT shutdown — `server.close()` then
+  `prisma.$disconnect()`, with a 10s force-exit fallback. No port/config
+  changes. Live signal-delivery test not possible in this Windows/PowerShell
+  environment; verified by code review + `tsc` + boot.
+- Message-only server error logging in `src/routes/courses.ts` (5 sites) and
+  `src/routes/health.ts` (1 site), matching the Phase 1 pattern; client-facing
+  error responses unchanged and generic.
+- Deleted after zero-reference verification (grep + `tsc` exit 0):
+  `src/app.ts` (stale second entry; sole `express-session` user; hardcoded
+  session secret; unauthenticated mounts), `src/routes/lessonRoutes.js`
+  (stale schema `quizzes` vs `quiz`, diverged from live `lessons.ts`),
+  `src/scripts/migrate.js` (broken ESM-import-in-CJS duplicate of the
+  `package.json`-referenced `migrate.ts`). `express-session` dependency left
+  for Phase 11 (no dependency changes in Phase 3).
+- Verified no-ops (evidence, no code): CORS correct as-is (exact
+  `FRONTEND_URL` origin + `credentials:true`; evil-origin probe returns the
+  configured origin, which browsers reject for non-matching origins).
+  No transactions added (enroll = single `create` backed by
+  `@@unique([userId,courseId])`; progress = single `upsert` on
+  `@@unique([userId,lessonId])`). No Redis code (zero prod imports; D-004
+  stays open; removal would be Phase 10 Docker scope). No rate limiting
+  (no rate-limit dep in stack; custom in-memory limiter would be new unsafe
+  global state — documented gap). `server.ts` env-loading vs `config.ts`
+  duplication intentionally left (ES-import hoisting vs manual `.env` load
+  makes naive migration a behavior risk for local `node dist/server.js`).
+- `git diff --check` clean.
 
 ## Completed Work (Phase 2)
 
@@ -118,6 +170,23 @@ Then STOP and await approval for Phase 3.
    (see Risks). Weak `oauth_state` + unverified state + missing `secure` flag
    intentionally left for Phase 5.
 
+## Verified Commands (Phase 3, actual output)
+
+| Command (workdir) | Result |
+|---|---|
+| `npx tsc --noEmit -p tsconfig.json` (skillforge-backend) | PASS — exit 0 |
+| `npm run build` (skillforge-backend) | PASS — exit 0 |
+| `npx jest` (skillforge-backend) | PASS — 1 suite, 1 test (placeholder, unchanged) |
+| `git grep new PrismaClient` (backend src) | 1 live factory (`lib/prisma.ts:13`) + 3 justified (test mock, one-shot `migrate.ts`, test file) |
+| `node dist/server.js` boot (ephemeral test env, :3003/:3004) | stays up; `GET /` → 200; `GET /health` → 500 `unhealthy` (no PostgreSQL — graceful DB-down, same as Phase 2 baseline) |
+| security headers on `GET /` | `X-Content-Type-Options: nosniff`, `X-Frame-Options: SAMEORIGIN`, `Referrer-Policy`, `X-DNS-Prefetch-Control: off` present; `X-Powered-By` absent |
+| CORS probe | allowed origin echoed with credentials; evil origin gets configured origin (browser-rejected for non-matching origin — correct) |
+| body limit probe | 200KB `POST /auth/login` rejected before route logic (generic handler message); small POST reaches route handler |
+| 404 probe | `GET /no-such-route` → 404 `{error:'Route not found'}` (shape preserved) |
+| `git diff --check` | clean (exit 0) |
+| Reviewer (`general` subagent per `.opencode/agents/reviewer.md`) | PASS (tsc/build/jest/grep/deletions/contract re-verified by reviewer) |
+| SIGTERM/SIGINT delivery | NOT live-tested (Windows/PowerShell cannot deliver POSIX signals); code-reviewed + `tsc`-verified |
+
 ## Verified Commands (Phase 2, actual output)
 
 | Command (workdir) | Result |
@@ -171,12 +240,23 @@ Recorded but not re-run in this session (same environment, prior evidence):
   (`globDirectory: './dist'` vs actual `outDir: '../dist'`) matched nothing. — Phase 8.
 - `node dist/server.js` failed at startup (Prisma not generated). — Phase 2.
 
-## Files Changed in Current Phase (Phase 2)
+## Files Changed in Current Phase (Phase 3)
 
-New: `skillforge-backend/src/config/config.ts` (only implementation file).
-Updated: `docs/PROJECT_STATE.md` (this file). No other files modified or
-renamed. `DECISIONS.md` unchanged (no new decision — module shape dictated by
-existing callers; fail-fast already ADR-001).
+Modified: `skillforge-backend/src/server.ts` (headers, body limit, `/health`
+dedupe, logger dedupe, 404/error reorder, graceful shutdown),
+`skillforge-backend/src/lib/prisma.ts` (env-gated log levels),
+`skillforge-backend/src/middleware/auth.ts` (singleton import),
+`skillforge-backend/src/routes/courses.ts` (singleton import + message-only
+logs), `skillforge-backend/src/routes/health.ts` (singleton import +
+message-only log). Deleted (all zero-reference verified):
+`skillforge-backend/src/app.ts`, `skillforge-backend/src/routes/lessonRoutes.js`,
+`skillforge-backend/src/scripts/migrate.js`. Updated: `docs/PROJECT_STATE.md`
+(this file). `DECISIONS.md` unchanged (no new architectural decision — D-004
+Redis stays open; no CSP by design, recorded above).
+No `package.json`, Prisma schema/migration, frontend, compose, or nginx changes.
+
+Phase 2 file record (historical): new
+`skillforge-backend/src/config/config.ts` (only implementation file).
 
 Phase 1 file record (historical): new `.gitignore`, `.env.example`,
 `skillforge-backend/.env.example`; modified `README.md`, `docker-compose.yml`,
@@ -207,9 +287,16 @@ Recorded for later phases; do not fix early.
   (`prisma generate` → `npm run build`, no bypasses). Full container
   verification belongs to Phase 10. Upstream Prisma generator output-path
   deprecation warning left untouched (no schema/generator changes in Phase 2).
-- Phase 3: 5 PrismaClient instances; no helmet/rate-limit/body-size;
-  no transactions on enroll/progress; duplicate `/health` (`server.ts:123`);
-  dead `src/app.ts` and `src/routes/lessonRoutes.js`; Redis declared but unused.
+- Phase 3 (residual, verified 2026-09-23): PrismaClient consolidated to one
+  live factory; dead `src/app.ts`, `src/routes/lessonRoutes.js`,
+  `src/scripts/migrate.js` removed; `/health` deduped. Remaining by design:
+  no rate limiting (no dep in stack; custom limiter = new unsafe global
+  state — gap documented, needs a Phase 11-coordinated dependency decision);
+  no CSP (blocked by inline-script OAuth page — Phase 5); Redis declared but
+  unused (D-004 open; removal is Phase 10 Docker scope); `server.ts`
+  env-loading vs `config.ts` duplication kept (import-hoisting vs `.env`
+  load ordering risk); no transactions on enroll/progress (single writes
+  backed by `@@unique` constraints — verified sufficient).
 - Phase 4: `/api/auth/*` contract exists only in frontend `hooks/useAuth.ts`
   and nginx rewrite; no backend paths; `AuthContext.tsx` PUT `/api/users/profile`
   has no backend route; dev vs prod proxy behavior differs.
@@ -262,6 +349,6 @@ production fail-fast on missing `JWT_SECRET`).
 
 ## Next Allowed Action
 
-Phase 2 gate PASSED (reviewer PASS 2026-09-23). STOP. Await explicit
-instruction to begin Phase 3 (Backend architecture and hardening). Do not
-start Phase 3 automatically.
+Phase 3 gate PASSED (reviewer PASS 2026-09-23). STOP. Await explicit
+instruction to begin Phase 4 (API contract consistency). Do not
+start Phase 4 automatically.

@@ -1,8 +1,7 @@
 import { Router } from 'express';
-import { PrismaClient } from '@prisma/client';
+import prisma from '../lib/prisma';
 
 const router = Router();
-const prisma = new PrismaClient();
 
 router.get('/', async (req, res) => {
   try {
@@ -15,7 +14,7 @@ router.get('/', async (req, res) => {
       timestamp: new Date().toISOString()
     });
   } catch (error) {
-    console.error('Health check error:', error);
+    console.error('Health check error:', error instanceof Error ? error.message : 'unknown error');
     res.status(500).json({
       status: 'unhealthy',
       error: 'Database connection failed'
