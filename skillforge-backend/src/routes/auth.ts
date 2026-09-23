@@ -1,4 +1,5 @@
 import express from 'express';
+import { randomBytes, timingSafeEqual } from 'node:crypto';
 import axios from 'axios';
 import jwt from 'jsonwebtoken';
 import bcrypt from 'bcrypt';
@@ -15,24 +16,14 @@ const GOOGLE_REDIRECT_URI = config.GOOGLE_REDIRECT_URI;
 const JWT_SECRET = config.JWT_SECRET;
 const FRONTEND_URL = config.FRONTEND_URL;
 
-console.log('Auth route using credentials:', {
-  GOOGLE_CLIENT_ID,
-  GOOGLE_REDIRECT_URI,
-  FRONTEND_URL
-});
-
 const oAuth2Client = new OAuth2Client(GOOGLE_CLIENT_ID);
 
 // Direct callback route to handle Google redirects to /auth/callback
 router.get('/callback', async (req, res) => {
-  console.log('Received direct callback with params:', req.query);
-  
   try {
     // Check if we have a token parameter (from our backend)
     if (req.query.token) {
       const token = req.query.token.toString();
-      console.log('Token found in callback, redirecting to frontend');
-      
       // Instead of redirecting, render an HTML page that will handle the redirect with JavaScript
       // This avoids issues with long tokens and redirect loops
       return res.send(`
@@ -56,21 +47,19 @@ router.get('/callback', async (req, res) => {
     
     // Check if we have a code parameter (from Google)
     if (req.query.code) {
-      console.log('Code parameter found, redirecting to google callback handler');
       // Redirect to the proper handler with all query parameters
       const queryString = req.url.includes('?') ? req.url.substring(req.url.indexOf('?')) : '';
       return res.redirect(`/auth/google/callback${queryString}`);
     }
     
     // No token or code, handle error
-    console.error('No token or code parameter in direct callback');
     if (req.query.error) {
       return res.redirect(`${FRONTEND_URL}/login?error=${encodeURIComponent(req.query.error.toString())}`);
     } else {
       return res.redirect(`${FRONTEND_URL}/login`);
     }
   } catch (error) {
-    console.error('Error in callback route:', error);
+    console.error('Callback route error:', error);
     return res.redirect(`${FRONTEND_URL}/login?error=authentication_error`);
   }
 });
@@ -78,11 +67,14 @@ router.get('/callback', async (req, res) => {
 // Step 1: Redirect to Google OAuth consent screen
 router.get('/google', (req, res) => {
   // Generate a random state to prevent CSRF attacks
-  const state = Math.random().toString(36).substring(2, 15);
-  
-  // Store the state in the session or cookie for verification later
-  // This is a simplified example - in production, use a secure session store
-  res.cookie('oauth_state', state, { httpOnly: true, maxAge: 10 * 60 * 1000 }); // 10 minutes
+  const state = randomBytes(32).toString('hex');
+
+  res.cookie('oauth_state', state, {
+    httpOnly: true,
+    sameSite: 'lax',
+    secure: process.env.NODE_ENV === 'production',
+    maxAge: 10 * 60 * 1000,
+  });
   
   const params = new URLSearchParams({
     client_id: GOOGLE_CLIENT_ID,
@@ -94,17 +86,36 @@ router.get('/google', (req, res) => {
     state: state,
   });
   
-  console.log('Redirecting to Google with params:', params.toString());
-  console.log('Using redirect URI:', GOOGLE_REDIRECT_URI);
   res.redirect(`https://accounts.google.com/o/oauth2/v2/auth?${params.toString()}`);
 });
 
 // Step 2: Google redirects back with code, exchange for tokens, verify, create user, issue JWT
 router.get('/google/callback', async (req, res) => {
-  console.log('Received callback with query params:', req.query);
-  console.log('Headers:', req.headers);
-  
   const { code, state, error } = req.query;
+
+  const storedState = (() => {
+    const header = req.headers.cookie;
+    if (!header) return null;
+    const value = header
+      .split(';')
+      .map((part) => part.trim())
+      .find((part) => part.startsWith('oauth_state='));
+    return value ? decodeURIComponent(value.slice('oauth_state='.length)) : null;
+  })();
+
+  if (!state || typeof state !== 'string' || !storedState) {
+    return res.redirect(`${FRONTEND_URL}/auth/callback?error=invalid_state`);
+  }
+
+  const stateValid =
+    state.length === storedState.length &&
+    timingSafeEqual(Buffer.from(state), Buffer.from(storedState));
+
+  if (!stateValid) {
+    return res.redirect(`${FRONTEND_URL}/auth/callback?error=invalid_state`);
+  }
+
+  res.clearCookie('oauth_state');
   
   // Handle error from Google
   if (error) {
@@ -114,17 +125,10 @@ router.get('/google/callback', async (req, res) => {
   
   // Check if code is missing
   if (!code) {
-    console.error('Missing authorization code in callback');
     return res.redirect(`${FRONTEND_URL}/auth/callback?error=missing_code`);
   }
   try {
     // Exchange code for tokens
-    console.log('Exchanging code for tokens with params:', {
-      code,
-      client_id: GOOGLE_CLIENT_ID,
-      redirect_uri: GOOGLE_REDIRECT_URI,
-    });
-    
     const tokenRes = await axios.post('https://oauth2.googleapis.com/token', null, {
       params: {
         code,
@@ -149,8 +153,6 @@ router.get('/google/callback', async (req, res) => {
     const payload = ticket.getPayload();
     if (!payload || !payload.email) throw new Error('Invalid Google ID token payload');
 
-    console.log('Successfully verified Google token for:', payload.email);
-
     // Find or create user
     let user = await prisma.user.findUnique({ where: { email: payload.email } });
     if (!user) {
@@ -162,10 +164,8 @@ router.get('/google/callback', async (req, res) => {
           picture: payload.picture || null,
         },
       });
-      console.log('Created new user:', user.id);
     } else if (!user.googleId) {
       user = await prisma.user.update({ where: { id: user.id }, data: { googleId: payload.sub, picture: payload.picture || user.picture } });
-      console.log('Updated user with Google ID:', user.id);
     }
 
     // Issue JWT
@@ -174,7 +174,6 @@ router.get('/google/callback', async (req, res) => {
     // Redirect to frontend with token
     const redirectUrl = new URL('/auth/callback', FRONTEND_URL);
     redirectUrl.searchParams.append('token', token);
-    console.log('Redirecting to frontend with token:', redirectUrl.toString());
     res.redirect(redirectUrl.toString());
   } catch (err: any) {
     console.error('Google OAuth error:', err);
@@ -184,22 +183,14 @@ router.get('/google/callback', async (req, res) => {
 
 // Authenticated user info
 router.get('/me', async (req, res) => {
-  console.log('[/auth/me] Request received');
-  console.log('[/auth/me] Headers:', req.headers);
-  
   const auth = req.headers.authorization;
   if (!auth || !auth.startsWith('Bearer ')) {
-    console.error('[/auth/me] No token provided');
     return res.status(401).json({ error: 'No token' });
   }
   
   try {
     const token = auth.replace('Bearer ', '');
-    console.log('[/auth/me] Verifying token:', token.substring(0, 10) + '...');
-    
     const decoded = jwt.verify(token, JWT_SECRET) as { id: string; email: string };
-    console.log('[/auth/me] Decoded token:', decoded);
-    
     const user = await prisma.user.findUnique({ 
       where: { id: decoded.id },
       select: {
@@ -214,14 +205,11 @@ router.get('/me', async (req, res) => {
     });
     
     if (!user) {
-      console.error('[/auth/me] User not found for id:', decoded.id);
       return res.status(404).json({ error: 'User not found' });
     }
     
-    console.log('[/auth/me] User found:', { id: user.id, email: user.email, name: user.name });
     res.json(user);
   } catch (err) {
-    console.error('[/auth/me] Token verification error:', err);
     res.status(401).json({ error: 'Invalid token' });
   }
 });
