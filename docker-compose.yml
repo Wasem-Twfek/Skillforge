@@ -1,7 +1,6 @@
 version: '3.8'
 
 services:
-  # PostgreSQL Database
   postgres:
     image: postgres:16-alpine
     container_name: skillforge-postgres
@@ -20,7 +19,6 @@ services:
       retries: 5
     restart: unless-stopped
 
-  # Redis for caching (used by ioredis in backend)
   redis:
     image: redis:alpine
     container_name: skillforge-redis
@@ -30,7 +28,6 @@ services:
       - redis-data:/data
     restart: unless-stopped
 
-  # Backend service
   backend:
     build:
       context: ./skillforge-backend
@@ -42,7 +39,8 @@ services:
       - DATABASE_URL=postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@postgres:5432/${POSTGRES_DB:-skillforge}?schema=public
       - REDIS_URL=redis://redis:6379
       - PORT=3001
-      - JWT_SECRET=${JWT_SECRET:-your_jwt_secret}
+      - JWT_SECRET=${JWT_SECRET:?JWT_SECRET must be set}
+      - SESSION_SECRET=${SESSION_SECRET:?SESSION_SECRET must be set}
       - FRONTEND_URL=http://localhost
       - GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID:-}
       - GOOGLE_CLIENT_SECRET=${GOOGLE_CLIENT_SECRET:-}
@@ -57,7 +55,6 @@ services:
     restart: unless-stopped
     command: sh -c "npx prisma generate && npx prisma migrate deploy && node dist/server.js"
 
-  # Frontend service with Nginx
   frontend:
     build:
       context: ./
