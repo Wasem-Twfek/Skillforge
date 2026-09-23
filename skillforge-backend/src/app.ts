@@ -7,37 +7,38 @@ import courseRoutes from './routes/courses';
 import lessonRoutes from './routes/lessons';
 import quizRoutes from './routes/quizzes';
 
+const sessionSecret = process.env.SESSION_SECRET;
+if (!sessionSecret) {
+  throw new Error('Missing required environment variable: SESSION_SECRET');
+}
+
 const app = express();
 
-// Middleware
 app.use(cors({
   origin: process.env.FRONTEND_URL || 'http://localhost:3000',
   credentials: true
 }));
 app.use(express.json());
 
-// Session configuration
 app.use(session({
-  secret: process.env.SESSION_SECRET || 'skillforge-session-secret',
+  secret: sessionSecret,
   resave: false,
   saveUninitialized: false,
-  cookie: { 
+  cookie: {
     secure: process.env.NODE_ENV === 'production',
-    maxAge: 24 * 60 * 60 * 1000 // 24 hours
+    maxAge: 24 * 60 * 60 * 1000
   }
 }));
 
-// Routes
 app.use('/auth', authRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/courses', courseRoutes);
 app.use('/api/lessons', lessonRoutes);
 app.use('/api/quizzes', quizRoutes);
 
-// Error handling middleware
-app.use((err: unknown, req: express.Request, res: express.Response, next: express.NextFunction) => {
+app.use((err: unknown, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
   console.error(err);
   res.status(500).json({ error: 'Something went wrong!' });
 });
 
-export default app; 
+export default app;
