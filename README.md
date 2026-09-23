@@ -90,11 +90,9 @@ This provides a foundation for tracking learning content, enrollment, progress, 
 Skillforge/
 ├── frontend/              # React/Vite application
 ├── skillforge-backend/    # Express API and Prisma schema
-├── public/                # Static frontend assets
-├── scripts/               # Build and maintenance scripts
 ├── docker-compose.yml     # Local multi-service environment
 ├── nginx.conf             # Frontend/API reverse-proxy configuration
-└── .env.example           # Example environment configuration
+└── .env.example           # Example Docker environment configuration
 ```
 
 ## Getting started
