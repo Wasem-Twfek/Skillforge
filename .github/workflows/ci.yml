@@ -22,12 +22,12 @@ jobs:
         working-directory: frontend
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Setup Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v5
         with:
-          node-version: 20
+          node-version: 22
           cache: npm
           cache-dependency-path: frontend/package-lock.json
 
@@ -38,7 +38,7 @@ jobs:
         run: npm run lint
 
       - name: Test
-        run: npm test -- --runInBand
+        run: npm test
 
       - name: Build
         run: npm run build
@@ -55,12 +55,12 @@ jobs:
       DATABASE_URL: postgresql://postgres:postgres@localhost:5432/skillforge
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Setup Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v5
         with:
-          node-version: 20
+          node-version: 22
           cache: npm
           cache-dependency-path: skillforge-backend/package-lock.json
 
