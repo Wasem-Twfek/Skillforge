@@ -3,9 +3,7 @@ import { render, screen } from '@testing-library/react';
 import Features from '../Features';
 
 describe('Features', () => {
-  const renderFeatures = () => {
-    return render(<Features />);
-  };
+  const renderFeatures = () => render(<Features />);
 
   it('renders the main heading', () => {
     renderFeatures();
@@ -14,7 +12,9 @@ describe('Features', () => {
 
   it('renders the subheading', () => {
     renderFeatures();
-    expect(screen.getByText("Experience learning that's engaging, effective, and enjoyable.")).toBeInTheDocument();
+    expect(
+      screen.getByText("Learn at your own pace with SkillForge's flexible courses and hands-on projects."),
+    ).toBeInTheDocument();
   });
 
   it('renders all feature cards', () => {
@@ -39,16 +39,18 @@ describe('Features', () => {
     expect(icons).toHaveLength(4);
   });
 
-  it('applies correct styling classes', () => {
+  it('applies the expected layout classes', () => {
     renderFeatures();
+
     const section = screen.getByRole('region', { name: /features/i });
     expect(section).toHaveClass('py-20', 'bg-white');
-    
-    const featureCards = screen.getAllByRole('heading', { level: 3 })
-      .map(heading => heading.closest('div'));
-    
-    featureCards.forEach(card => {
+
+    const featureCards = screen
+      .getAllByRole('heading', { level: 3 })
+      .map((heading) => heading.closest('div'));
+
+    featureCards.forEach((card) => {
       expect(card).toHaveClass('relative');
     });
   });
-}); 
+});
