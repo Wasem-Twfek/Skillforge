@@ -1,25 +1,53 @@
 # PROJECT_STATE.md — SkillForge Persistent State
 
-CURRENT_PHASE: 1 (Security and secrets)
-CURRENT_STATUS: PHASE 1 COMPLETE — reviewer PASS; STOP, do not start Phase 2 without explicit instruction
+CURRENT_PHASE: 2 (Backend build and startup)
+CURRENT_STATUS: PHASE 2 COMPLETE — reviewer PASS; STOP, do not start Phase 3 without explicit instruction
 LAST_VERIFIED: 2026-09-23
-LAST_COMMIT: (Phase 1 commit) "Phase 1: harden secrets, env handling and credential logging"
+LAST_COMMIT: (Phase 2 commit) "Phase 2: add env-backed backend config so the backend builds and starts"
 
 ---
 
 ## Current Phase
 
-Phase 1 — Security and secrets. Harden secret handling, env configuration,
-and credential logging. No functional/architectural redesign.
+Phase 2 — Backend build and startup. Make the backend compile, generate Prisma
+correctly, build, and start from `src/`. No architectural/contract redesign.
 
 ## Current Objective
 
-Per `docs/PRODUCTION_PLAN.md` Phase 1: remove leaked credentials from tracked
-files, eliminate insecure secret fallbacks, add `.gitignore` + `.env.example`,
-stop plaintext secrets/logging, untrack generated/secret-bearing build output
-(without rewriting history). Then STOP and await approval for Phase 2.
+Per `docs/PRODUCTION_PLAN.md` Phase 2: resolve the confirmed TS2307 build
+blocker with the smallest evidence-backed change, verify Prisma generation,
+prove local startup (`node dist/server.js` + `npm run dev`) serves `/` and
+`/health`, validate the Docker backend path as far as the environment permits.
+Then STOP and await approval for Phase 3.
 
-## Completed Work (Phase 1)
+## Completed Work (Phase 2)
+
+- Root cause (verified, not assumed): `src/config/config.ts` was never
+  committed — `src/config/` held only `checkenv.ts` — while three modules
+  import `{ config }` from `../config/config`. The only prior artifact was a
+  stale compiled `dist/config/config.js` (untracked in Phase 1).
+- Created `skillforge-backend/src/config/config.ts`: env-backed `config`
+  object with exactly the keys proven by callers and the old module shape
+  (`PORT`, `NODE_ENV`, `FRONTEND_URL`, `JWT_SECRET`, `DATABASE_URL`,
+  `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `GOOGLE_REDIRECT_URI`).
+  Zero hardcoded secrets; non-secret defaults mirror `src/server.ts`;
+  credentials default to `''`; production throws on missing `JWT_SECRET`
+  (ADR-001, same rule as `server.ts`); no value logging. No new env vars
+  invented (`GOOGLE_CALLBACK_URL` inconsistency left for Phase 5).
+- Refreshed Prisma client via the repo's own `npm run prisma:generate`
+  (v6.7.0, node_modules output). No schema/generator change.
+- `npm run build` now exits 0. `node dist/server.js` boots and stays alive:
+  `GET /` → 200 (API doc), `GET /health` → 500 `unhealthy` with no PostgreSQL
+  running (graceful DB-down path, allowed: any DB state). `npm run dev` smoke:
+  `GET /` → 200. Ephemeral dummy values used in command env only; nothing
+  committed; no secrets printed.
+- Dockerfile untouched (already `prisma generate` → `npm run build`, no
+  bypasses). `docker compose build backend` could not run: Docker Desktop
+  engine pipe unavailable in this environment; `docker compose config --quiet`
+  still passes. Full container boot deferred to Phase 10 (owns Docker).
+- No other files modified. `git diff --check` clean.
+
+## Completed Work (Phase 1 — historical record, reviewer PASS 2026-09-23)
 
 - Created `.gitignore` (ignores `dist/`, `**/dist/`, `.env`/`**/.env`,
   `skillforge-backend/prisma/src/generated/`, `node_modules/`, coverage/logs;
@@ -60,27 +88,26 @@ stop plaintext secrets/logging, untrack generated/secret-bearing build output
 - Phase 0 control files (`AGENTS.md`, `docs/*`, `.opencode/agents/reviewer.md`)
   committed together with this phase (they were untracked since bootstrap).
 
-## Current Blockers (recorded from baseline evidence — NOT fixed in Phase 0)
+## Current Blockers
 
-1. Backend source does not build: `src/lib/prisma.ts:3`,
-   `src/middleware/auth.ts:4`, `src/routes/auth.ts:7` import
-   `../config/config`, which does not exist (`src/config/` has only
-   `checkenv.ts`). Verified `tsc --noEmit` TS2307 x3. -> Phase 2.
-2. Backend cannot start: `node dist/server.js` fails with
-   `@prisma/client did not initialize yet` in the inspected environment; the
-   committed `dist/` is stale relative to `src/`. `npm run dev` fails at
-   startup on the missing `../config/config`. -> Phase 2.
-3. Backend Docker build fails at `RUN npm run build` (same TS2307). -> Phase 10.
-4. Frontend typecheck fails: `src/hooks/useOptimizedQuery.ts:32` (TS6133),
+1. RESOLVED in Phase 2 (reviewer PASS 2026-09-23): backend TS2307 x3 fixed by
+   new `src/config/config.ts`; `npm run build` exits 0; `node dist/server.js`
+   and `npm run dev` boot and serve `/` (200) with graceful DB-down `/health`.
+2. RESOLVED in Phase 2 as far as code is concerned: backend Docker build
+   failure was the same TS2307 — `npm run build` now passes and the Dockerfile
+   (`prisma generate` → `npm run build`, no bypasses) is valid by inspection;
+   image build + container boot could not run here (no Docker engine) and full
+   container verification belongs to Phase 10.
+3. Frontend typecheck fails: `src/hooks/useOptimizedQuery.ts:32` (TS6133),
    `:85` (TS2352). -> Phase 7.
-5. Frontend lint fails: 704 problems; majority are false-positive
+4. Frontend lint fails: 704 problems; majority are false-positive
    `react/react-in-jsx-scope` under the react-jsx runtime. -> Phase 7.
-6. Frontend tests: 2 files failed / 6 tests failed / 9 passed. -> Phase 9.
-7. Docker OAuth callback path is not proxied in `nginx.conf` (`/auth/*` falls
+5. Frontend tests: 2 files failed / 6 tests failed / 9 passed. -> Phase 9.
+6. Docker OAuth callback path is not proxied in `nginx.conf` (`/auth/*` falls
    into the SPA `location /`). -> Phase 5 / Phase 10.
-8. Production API double prefix `/api/api/*` (Vite `VITE_API_URL=/api` in
+7. Production API double prefix `/api/api/*` (Vite `VITE_API_URL=/api` in
    Docker build + services calling `/api/...`). -> Phase 4.
-9. Phase 0 security findings — RESOLVED in Phase 1 (reviewer PASS 2026-09-23):
+8. Phase 0 security findings — RESOLVED in Phase 1 (reviewer PASS 2026-09-23):
    tracked credential block in `README.md` replaced with placeholders;
    `skillforge-backend/dist/config/config.js` untracked from the index (staged
    deletion, history kept); `.gitignore` + both `.env.example` files created;
@@ -91,7 +118,24 @@ stop plaintext secrets/logging, untrack generated/secret-bearing build output
    (see Risks). Weak `oauth_state` + unverified state + missing `secure` flag
    intentionally left for Phase 5.
 
-## Verified Commands (Phase 1, actual output — deltas vs Phase 0 baseline)
+## Verified Commands (Phase 2, actual output)
+
+| Command (workdir) | Result |
+|---|---|
+| `git status --short` | only `?? skillforge-backend/src/config/config.ts` (then this file's own update); `git diff --check` clean |
+| `npx tsc --noEmit -p tsconfig.json` (skillforge-backend) | PASS — exit 0 (was FAIL TS2307 x3 in Phase 0/1 baseline) |
+| `npm run build` (skillforge-backend) | PASS — exit 0 |
+| `npm run prisma:generate` (skillforge-backend) | PASS — Prisma Client v6.7.0 to `node_modules/@prisma/client` (one upstream generator-output-path deprecation warning, untouched — future-phase owned) |
+| `npx prisma validate` with `DATABASE_URL` set | PASS — schema valid |
+| `node dist/server.js` boot (ephemeral test env, :3001) | process stays alive, Prisma initialized; `GET /` → 200 API-doc JSON; `GET /health` → 500 `unhealthy` (no PostgreSQL running — graceful DB-down path, allowed) |
+| `npm run dev` boot smoke (:3002) | `GET /` → 200 |
+| `npx jest` (skillforge-backend) | PASS — 1 suite, 1 test (placeholder, unchanged, no test files touched) |
+| `docker compose config --quiet` (root) | PASS — only obsolete `version:` warning (unchanged) |
+| `docker compose build backend` | NOT RUN — no Docker engine in this environment (client-only connect error); Dockerfile valid by inspection, full image/container verification belongs to Phase 10 |
+| secret/value logging check | no `console.*` in new `config.ts`; startup logs presence-only; ephemeral dummy test values in command env only, never committed |
+| Reviewer (`general` subagent per `.opencode/agents/reviewer.md`) | PASS (evidence recorded in session; tsc/jest/validate re-verified by reviewer) |
+
+## Verified Commands (Phase 1, actual output — historical record)
 
 | Command (workdir) | Result |
 |---|---|
@@ -127,10 +171,15 @@ Recorded but not re-run in this session (same environment, prior evidence):
   (`globDirectory: './dist'` vs actual `outDir: '../dist'`) matched nothing. — Phase 8.
 - `node dist/server.js` failed at startup (Prisma not generated). — Phase 2.
 
-## Files Changed in Current Phase (Phase 1)
+## Files Changed in Current Phase (Phase 2)
 
-New: `.gitignore`, `.env.example`, `skillforge-backend/.env.example`.
-Modified: `README.md`, `docker-compose.yml`,
+New: `skillforge-backend/src/config/config.ts` (only implementation file).
+Updated: `docs/PROJECT_STATE.md` (this file). No other files modified or
+renamed. `DECISIONS.md` unchanged (no new decision — module shape dictated by
+existing callers; fail-fast already ADR-001).
+
+Phase 1 file record (historical): new `.gitignore`, `.env.example`,
+`skillforge-backend/.env.example`; modified `README.md`, `docker-compose.yml`,
 `skillforge-backend/src/server.ts`, `src/middleware/auth.ts`,
 `src/routes/auth.ts`, `src/routes/courses.ts`, `src/routes/users.ts`,
 `src/config/checkenv.ts`, `src/scripts/check-env.ts`,
@@ -149,10 +198,15 @@ Recorded for later phases; do not fix early.
 - Phase 1 (residual, verified 2026-09-23 — all in-index instances resolved):
   historical credential material remains in git history (`e99fe3d`) and
   requires EXTERNAL rotation (Google OAuth client secret, JWT/session secrets);
-  history is NOT rewritten per policy. Local working-tree `dist/` files remain
-  on disk (now gitignored) until Phase 2 rebuilds. Weak `oauth_state`
+  history is NOT rewritten per policy. Working-tree `dist/` was rebuilt from
+  source by `npm run build` in Phase 2 (still gitignored). Weak `oauth_state`
   (`Math.random()`), unverified state, missing `secure` flag, and JWT
   `localStorage` handling intentionally deferred to Phase 5.
+- Phase 2 (residual): no Docker engine in this environment, so image build +
+  container boot are unverified here; Dockerfile is valid by inspection
+  (`prisma generate` → `npm run build`, no bypasses). Full container
+  verification belongs to Phase 10. Upstream Prisma generator output-path
+  deprecation warning left untouched (no schema/generator changes in Phase 2).
 - Phase 3: 5 PrismaClient instances; no helmet/rate-limit/body-size;
   no transactions on enroll/progress; duplicate `/health` (`server.ts:123`);
   dead `src/app.ts` and `src/routes/lessonRoutes.js`; Redis declared but unused.
@@ -174,7 +228,9 @@ Recorded for later phases; do not fix early.
 - Phase 9: broken/outdated Navbar & Features tests; backend `auth.test.ts` has
   no assertions; jest 70% coverage thresholds unachievable.
 - Phase 10: `docker-setup.ps1` references missing `.env.example`; deprecated
-  `docker-compose`; compose `version:` obsolete; backend Dockerfile cannot build.
+  `docker-compose`; compose `version:` obsolete; backend image/container boot
+  still unverified (no engine here; code-side build blocker resolved in
+  Phase 2).
 - Phase 11: `npm audit` findings above; dependency-outdated list recorded in
   prior audit (axios, prisma, vite, vitest, express, etc.) — upgrade only in
   this phase, coordinated.
@@ -206,6 +262,6 @@ production fail-fast on missing `JWT_SECRET`).
 
 ## Next Allowed Action
 
-Phase 1 gate PASSED (reviewer PASS 2026-09-23). STOP. Await explicit
-instruction to begin Phase 2 (Backend build/startup). Do not start Phase 2
-automatically.
+Phase 2 gate PASSED (reviewer PASS 2026-09-23). STOP. Await explicit
+instruction to begin Phase 3 (Backend architecture and hardening). Do not
+start Phase 3 automatically.
