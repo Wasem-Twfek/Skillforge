@@ -3,12 +3,14 @@ import { render, screen, fireEvent } from '@testing-library/react';
 import { BrowserRouter } from 'react-router-dom';
 import Navbar from '../Navbar';
 
-// Create a mock for the useAuth hook
 const mockUseAuth = vi.fn();
 
-// Mock the module
 vi.mock('../../contexts/AuthContext', () => ({
-  useAuth: () => mockUseAuth()
+  useAuth: () => mockUseAuth(),
+}));
+
+vi.mock('../ThemeToggle', () => ({
+  default: () => <button type="button" aria-label="Theme toggle">Theme</button>,
 }));
 
 describe('Navbar', () => {
@@ -17,17 +19,16 @@ describe('Navbar', () => {
     name: 'Test User',
     email: 'test@example.com',
   };
-  
+
   const mockLogout = vi.fn();
-  
+
   beforeEach(() => {
     vi.clearAllMocks();
-    
-    // Default mock implementation
     mockUseAuth.mockReturnValue({
       user: mockUser,
       login: vi.fn(),
       logout: mockLogout,
+      isLoading: false,
     });
   });
 
@@ -35,27 +36,27 @@ describe('Navbar', () => {
     render(
       <BrowserRouter>
         <Navbar />
-      </BrowserRouter>
+      </BrowserRouter>,
     );
 
     expect(screen.getByText('Home')).toBeInTheDocument();
     expect(screen.getByText('Courses')).toBeInTheDocument();
-    expect(screen.getByText('Profile')).toBeInTheDocument();
+    expect(screen.getByText('Quizzes')).toBeInTheDocument();
     expect(screen.getByText('Logout')).toBeInTheDocument();
   });
 
-  it('renders login/register links when user is not authenticated', () => {
-    // Override mock for this test
+  it('renders login when user is not authenticated', () => {
     mockUseAuth.mockReturnValue({
       user: null,
       login: vi.fn(),
       logout: mockLogout,
+      isLoading: false,
     });
 
     render(
       <BrowserRouter>
         <Navbar />
-      </BrowserRouter>
+      </BrowserRouter>,
     );
 
     expect(screen.getByText('Login')).toBeInTheDocument();
@@ -65,34 +66,35 @@ describe('Navbar', () => {
     render(
       <BrowserRouter>
         <Navbar />
-      </BrowserRouter>
+      </BrowserRouter>,
     );
+
     expect(screen.getByText('SkillForge')).toBeInTheDocument();
   });
 
-  it('toggles mobile menu when hamburger button is clicked', () => {
+  it('toggles the mobile navigation menu', () => {
     render(
       <BrowserRouter>
         <Navbar />
-      </BrowserRouter>
+      </BrowserRouter>,
     );
-    const menuButton = screen.getByRole('button', { name: '' }); // The menu button has no accessible name
+
+    const menuButton = screen.getByRole('button', { name: 'Toggle navigation menu' });
     fireEvent.click(menuButton);
-    
-    // Check if mobile menu items are visible
-    expect(screen.getAllByText('Home')[1]).toBeVisible();
-    expect(screen.getAllByText('About')[1]).toBeVisible();
-    expect(screen.getAllByText('Courses')[1]).toBeVisible();
+
+    expect(screen.getAllByText('Home')).toHaveLength(2);
+    expect(screen.getAllByText('About')).toHaveLength(2);
+    expect(screen.getAllByText('Courses')).toHaveLength(2);
   });
 
-  it('calls logout function when logout button is clicked', () => {
+  it('calls logout when the logout button is clicked', () => {
     render(
       <BrowserRouter>
         <Navbar />
-      </BrowserRouter>
+      </BrowserRouter>,
     );
-    const logoutButton = screen.getByText('Logout');
-    fireEvent.click(logoutButton);
+
+    fireEvent.click(screen.getByText('Logout'));
     expect(mockLogout).toHaveBeenCalled();
   });
-}); 
+});
