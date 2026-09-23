@@ -22,7 +22,6 @@ export function useShallowStore<StateType, Result>(
   }
   
   // Use the selector with shallow comparison
-  // @ts-ignore - The type definition doesn't properly handle the equality function
   return store(state => selectorRef.current(state), shallow);
 }
 
