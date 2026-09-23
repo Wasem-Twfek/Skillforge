@@ -36,7 +36,7 @@ JWT_SECRET=change-me-to-a-long-random-value-in-local-env
 # Google OAuth Configuration (leave empty to disable Google login locally)
 GOOGLE_CLIENT_ID=
 GOOGLE_CLIENT_SECRET=
-GOOGLE_CALLBACK_URL=http://localhost:3001/auth/google/callback
+GOOGLE_REDIRECT_URI=http://localhost:3001/auth/google/callback
 
 # Session Configuration (required if sessions are enabled)
 SESSION_SECRET=change-me-to-a-long-random-value-in-local-env
@@ -75,29 +75,34 @@ NODE_ENV=development
   - **Fix**: We've added protection for this in the latest code
   
 - **Cause 2**: Redirect URI mismatch
-  - **Fix**: Ensure the GOOGLE_CALLBACK_URL in your .env matches exactly with the URI registered in Google Cloud Console
+  - **Fix**: Ensure the GOOGLE_REDIRECT_URI in your .env matches exactly with the URI registered in Google Cloud Console
 
 - **Cause 3**: Google OAuth configuration issues
   - **Fix**: Verify client ID and secret are correct, and that the OAuth screen is properly configured
 
 #### CSRF Protection:
 
-We've implemented state parameter validation to protect against CSRF attacks. The state parameter is generated and verified between the frontend and backend.
+The backend generates a cryptographically random `state` for each login
+attempt, stores it in an `HttpOnly` `oauth_state` cookie, and verifies it
+against the `state` Google returns to `/auth/google/callback`. Callbacks with
+a missing or mismatched state are rejected before any code exchange.
 
 ### 4. Testing the OAuth Flow
 
 To test your OAuth configuration:
 
 1. Start both the frontend and backend servers
-2. Navigate to `http://localhost:3001/auth/test-google` in your browser
-3. Click the provided test URL to simulate the OAuth flow
-4. If successful, you'll be redirected to the lessons page
+2. Open the app at `http://localhost:3000` and click the Google login button
+3. Approve the consent screen; you should land back in the app authenticated
+4. If it fails, you are redirected to `/auth/callback?error=<reason>` in the
+   app (`missing_code`, `invalid_state`, or `server_error`)
 
 ### 5. Debugging Tools
 
 - Check the backend console logs for authentication process details
 - Use the debug info in the AuthCallback component
-- Access `http://localhost:3001/auth/debug-page` for a manual token testing tool
+- Call `GET /auth/me` with your JWT as `Authorization: Bearer <token>` to
+  verify token validity directly
 
 ## 🚀 Getting Started
 

@@ -102,8 +102,8 @@ Run the smallest relevant subset, then the full set for a phase gate:
   `.env`; `DOCKER=true` skips dotenv. Names in use: `PORT`, `NODE_ENV`,
   `FRONTEND_URL`, `JWT_SECRET`, `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`,
   `GOOGLE_REDIRECT_URI`, `DATABASE_URL`, `REDIS_URL`, `POSTGRES_*`,
-  `VITE_API_URL`. (A `GOOGLE_CALLBACK_URL` name also appears in docs/scripts —
-  inconsistency to be resolved in Phase 5, not invented here.)
+   `VITE_API_URL`. (A legacy `GOOGLE_CALLBACK_URL` name appeared in
+   docs/scripts — unified to `GOOGLE_REDIRECT_URI` in Phase 5, D-001.)
 
 ## 9. Phase System
 

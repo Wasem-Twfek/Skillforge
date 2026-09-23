@@ -3,7 +3,7 @@ console.log('Checking environment variables for Google OAuth:');
 console.log({
   GOOGLE_CLIENT_ID: process.env.GOOGLE_CLIENT_ID ? 'Set' : 'Not Set',
   GOOGLE_CLIENT_SECRET: process.env.GOOGLE_CLIENT_SECRET ? 'Set' : 'Not Set',
-  GOOGLE_CALLBACK_URL: process.env.GOOGLE_CALLBACK_URL ? 'Set' : 'Not Set',
+  GOOGLE_REDIRECT_URI: process.env.GOOGLE_REDIRECT_URI ? 'Set' : 'Not Set',
   FRONTEND_URL: process.env.FRONTEND_URL ? 'Set' : 'Not Set',
   JWT_SECRET: process.env.JWT_SECRET ? 'Set' : 'Not Set',
 });
@@ -12,7 +12,7 @@ console.log({
 const missingVars: string[] = [];
 if (!process.env.GOOGLE_CLIENT_ID) missingVars.push('GOOGLE_CLIENT_ID');
 if (!process.env.GOOGLE_CLIENT_SECRET) missingVars.push('GOOGLE_CLIENT_SECRET');
-if (!process.env.GOOGLE_CALLBACK_URL) missingVars.push('GOOGLE_CALLBACK_URL');
+if (!process.env.GOOGLE_REDIRECT_URI) missingVars.push('GOOGLE_REDIRECT_URI');
 if (!process.env.FRONTEND_URL) missingVars.push('FRONTEND_URL');
 if (!process.env.JWT_SECRET) missingVars.push('JWT_SECRET');
 
@@ -28,7 +28,7 @@ export function checkGoogleOAuthEnv(): boolean {
   return !!(
     process.env.GOOGLE_CLIENT_ID && 
     process.env.GOOGLE_CLIENT_SECRET &&
-    process.env.GOOGLE_CALLBACK_URL &&
+    process.env.GOOGLE_REDIRECT_URI &&
     process.env.FRONTEND_URL
   );
 } 

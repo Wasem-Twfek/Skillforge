@@ -25,7 +25,11 @@ declare global {
 
 export const authenticate = async (req: Request, res: Response, next: NextFunction) => {
 	try {
-		const token = req.headers.authorization?.split(' ')[1];
+		// Enforce the Bearer scheme the frontend always sends (see the axios
+		// interceptor and AuthContext): no scheme check would accept any
+		// "<anything> <token>" header shape.
+		const parts = req.headers.authorization?.split(' ');
+		const token = parts?.length === 2 && parts[0] === 'Bearer' ? parts[1] : undefined;
 
 		if (!token) {
 			return res.status(401).json({ error: 'No token provided' });

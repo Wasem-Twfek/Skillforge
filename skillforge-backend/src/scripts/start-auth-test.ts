@@ -10,7 +10,7 @@ dotenv.config({ path: path.resolve(__dirname, '../../.env') });
 // Check required environment variables
 const clientId = process.env.GOOGLE_CLIENT_ID;
 const clientSecret = process.env.GOOGLE_CLIENT_SECRET;
-const callbackUrl = process.env.GOOGLE_CALLBACK_URL;
+const callbackUrl = process.env.GOOGLE_REDIRECT_URI;
 const frontendUrl = process.env.FRONTEND_URL;
 
 if (!clientId || !clientSecret || !callbackUrl || !frontendUrl) {
@@ -18,7 +18,7 @@ if (!clientId || !clientSecret || !callbackUrl || !frontendUrl) {
   console.error({
     GOOGLE_CLIENT_ID: clientId ? 'Set' : 'Missing',
     GOOGLE_CLIENT_SECRET: clientSecret ? 'Set' : 'Missing',
-    GOOGLE_CALLBACK_URL: callbackUrl ? 'Set' : 'Missing',
+    GOOGLE_REDIRECT_URI: callbackUrl ? 'Set' : 'Missing',
     FRONTEND_URL: frontendUrl ? 'Set' : 'Missing'
   });
   
@@ -30,7 +30,7 @@ if (!clientId || !clientSecret || !callbackUrl || !frontendUrl) {
 # Google OAuth configuration
 GOOGLE_CLIENT_ID=YOUR_GOOGLE_CLIENT_ID
 GOOGLE_CLIENT_SECRET=YOUR_GOOGLE_CLIENT_SECRET
-GOOGLE_CALLBACK_URL=http://localhost:3001/auth/google/callback
+GOOGLE_REDIRECT_URI=http://localhost:3001/auth/google/callback
 FRONTEND_URL=http://localhost:3000
 JWT_SECRET=a_secure_jwt_secret_key_for_development
 `);

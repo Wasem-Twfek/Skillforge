@@ -5,6 +5,13 @@ import bcrypt from 'bcrypt';
 import { OAuth2Client } from 'google-auth-library';
 import prisma from '../lib/prisma';
 import { config } from '../config/config';
+import {
+  OAUTH_STATE_COOKIE,
+  generateState,
+  getStateCookie,
+  statesMatch,
+  escapeForInlineScript,
+} from '../lib/oauthState';
 
 const router = express.Router();
 
@@ -22,8 +29,11 @@ router.get('/callback', async (req, res) => {
   try {
     // Check if we have a token parameter (from our backend)
     if (req.query.token) {
-      const token = req.query.token.toString();
-      
+      // The token is attacker-controllable query input rendered into an
+      // inline <script> block: escape it so a crafted value cannot break out
+      // of the string (reflected XSS). Well-formed JWTs pass through unchanged.
+      const token = escapeForInlineScript(req.query.token.toString());
+
       // Instead of redirecting, render an HTML page that will handle the redirect with JavaScript
       // This avoids issues with long tokens and redirect loops
       return res.send(`
@@ -67,12 +77,21 @@ router.get('/callback', async (req, res) => {
 
 // Step 1: Redirect to Google OAuth consent screen
 router.get('/google', (req, res) => {
-  // Generate a random state to prevent CSRF attacks
-  const state = Math.random().toString(36).substring(2, 15);
-  
-  // Store the state in the session or cookie for verification later
-  // This is a simplified example - in production, use a secure session store
-  res.cookie('oauth_state', state, { httpOnly: true, maxAge: 10 * 60 * 1000 }); // 10 minutes
+  // Unpredictable CSRF state, verified against the cookie in the callback
+  // (ADR-003). No server-side store: single-use is enforced by clearing the
+  // cookie when it is consumed.
+  const state = generateState();
+
+  // Lax allows the top-level Google -> backend callback navigation to carry
+  // the cookie; Secure is production-only so local HTTP development keeps
+  // working (localhost is a secure context, so prod HTTP localhost is fine).
+  res.cookie(OAUTH_STATE_COOKIE, state, {
+    httpOnly: true,
+    secure: config.NODE_ENV === 'production',
+    sameSite: 'lax',
+    path: '/',
+    maxAge: 10 * 60 * 1000, // 10 minutes
+  });
   
   const params = new URLSearchParams({
     client_id: GOOGLE_CLIENT_ID,
@@ -91,12 +110,21 @@ router.get('/google', (req, res) => {
 router.get('/google/callback', async (req, res) => {
   const { code, state, error } = req.query;
   
+  // Verify the CSRF state before touching the authorization code (ADR-003).
+  // The cookie is cleared on consumption so a captured state cannot be replayed.
+  const expectedState = getStateCookie(req.headers.cookie);
+  res.clearCookie(OAUTH_STATE_COOKIE, { path: '/' });
+  if (!statesMatch(expectedState, state)) {
+    console.error('OAuth state mismatch in callback');
+    return res.redirect(`${FRONTEND_URL}/auth/callback?error=invalid_state`);
+  }
+
   // Handle error from Google
   if (error) {
     console.error('Google OAuth error received in callback');
-    return res.redirect(`${FRONTEND_URL}/auth/callback?error=${error}`);
+    return res.redirect(`${FRONTEND_URL}/auth/callback?error=${encodeURIComponent(error.toString())}`);
   }
-  
+
   // Check if code is missing
   if (!code) {
     console.error('Missing authorization code in callback');

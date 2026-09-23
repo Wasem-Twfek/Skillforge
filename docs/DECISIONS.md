@@ -35,9 +35,9 @@ stay aligned with the repository.
 
 | # | Topic | Phase | Status |
 |---|---|---|---|
-| D-001 | Redirect-URI env var name: unify `GOOGLE_REDIRECT_URI` vs `GOOGLE_CALLBACK_URL` | 5 | open |
-| D-002 | OAuth CSRF state strategy (CSPRNG + verified cookie) | 5 | open |
-| D-003 | JWT/token storage strategy if Phase 1 evidence requires change | 1/5 | open |
+| D-001 | Redirect-URI env var name: unify `GOOGLE_REDIRECT_URI` vs `GOOGLE_CALLBACK_URL` | 5 | decided (`GOOGLE_REDIRECT_URI`; Phase 5 renamed all `GOOGLE_CALLBACK_URL` uses) |
+| D-002 | OAuth CSRF state strategy (CSPRNG + verified cookie) | 5 | decided (ADR-003) |
+| D-003 | JWT/token storage strategy if Phase 1 evidence requires change | 1/5 | decided (ADR-004: keep `localStorage`) |
 | D-004 | Redis: keep declared-but-unused, use it, or remove from compose/docs | 3 | open |
 | D-005 | `/api/auth/*` prefix convention (nginx rewrite vs backend-mounted routes) | 4 | decided (ADR-002) |
 | D-006 | Frontend/backend response-shape alignment for lessons/quizzes | 4/7 | open |
@@ -84,6 +84,43 @@ Evidence: `skillforge-backend/src/server.ts` dual mount, `nginx.conf`
 rewrite block, `frontend/vite.config.ts` proxy rewrite,
 `frontend/src/contexts/AuthContext.tsx` relative paths, Phase 4 boot probes
 (`GET /api/auth/me` → auth-router 401, `POST /api/auth/login` → handler).
+
+## ADR-003 (2026-09-23) — Cookie-based OAuth CSRF state, no new store
+Status: Accepted
+Context: Phase 5 proved `GET /auth/google` generated `state` with
+`Math.random()` and never verified it in `/google/callback`, leaving the
+Google OAuth flow open to login-CSRF. The backend has no cookie parser,
+no session store, and no Redis usage; adding a store would be new
+infrastructure for a single value.
+Decision: Generate state with `crypto.randomBytes(32)` (hex), store it in
+the existing `oauth_state` cookie (`httpOnly`, `sameSite: 'lax'`,
+`secure` in production, 10-minute expiry), parse the `Cookie` header
+without a new dependency, compare with `crypto.timingSafeEqual` (fail
+closed), and clear the cookie on consumption for single-use. Missing or
+mismatched state redirects with `invalid_state` before any code exchange.
+Consequences: CSRF protection without sessions, Redis, or new
+dependencies; `Secure` relies on localhost-as-secure-context for prod
+`http://localhost` deployments (dev unaffected — flag is prod-only).
+Evidence: `skillforge-backend/src/lib/oauthState.ts`,
+`skillforge-backend/src/routes/auth.ts` (`/google`, `/google/callback`),
+Phase 5 state CASE A–C probes and jest suite.
+
+## ADR-004 (2026-09-23) — Keep JWT in browser `localStorage`
+Status: Accepted
+Context: Phase 5 evaluated moving access tokens out of `localStorage`
+(frontend axios interceptor, `AuthContext`, `/auth/callback` page all
+write it). A cookie-based session would require backend set-cookie +
+CORS `credentials` rework + frontend auth rewrite + its own CSRF
+protection — an architecture redesign the Phase 5 scope forbids without
+a security blocker, and no exfiltrated-token incident is evidenced.
+Decision: Keep `localStorage` JWT handling; instead remove the
+demonstrated theft vector (unescaped token interpolation in
+`GET /auth/callback`, now escaped) and keep tokens out of all logs.
+Consequences: XSS impact stays at the `localStorage` baseline;
+revisit only with evidenced need in a dedicated auth phase.
+Evidence: `frontend/src/lib/axios.ts`, `frontend/src/contexts/AuthContext.tsx`,
+`skillforge-backend/src/routes/auth.ts` (`/callback` escaping), Phase 1/5
+no-secret-output verification.
 
 When a decision is made, append an entry:
 

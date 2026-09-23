@@ -140,7 +140,7 @@ PHASE 4 GATE:
 
 ---
 
-## PHASE 5 — Authentication and OAuth
+## PHASE 5 — Authentication and OAuth (COMPLETE)
 
 - Objective: stabilize email + Google OAuth flows using only existing
   endpoints/behavior. Unify the redirect-URI env variable name

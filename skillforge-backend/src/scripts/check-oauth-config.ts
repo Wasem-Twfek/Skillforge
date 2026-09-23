@@ -17,7 +17,7 @@ if (isConfigured) {
   console.log('✅ Google OAuth is properly configured');
   
   // Check callback URL structure (presence/structure only — never print values)
-  const callbackUrl = process.env.GOOGLE_CALLBACK_URL;
+  const callbackUrl = process.env.GOOGLE_REDIRECT_URI;
   if (callbackUrl) {
     try {
       const url = new URL(callbackUrl);
@@ -30,7 +30,7 @@ if (isConfigured) {
   
   // Generate a test OAuth URL (do not print it — it embeds the client ID)
   const clientId = process.env.GOOGLE_CLIENT_ID;
-  const redirectUri = process.env.GOOGLE_CALLBACK_URL;
+  const redirectUri = process.env.GOOGLE_REDIRECT_URI;
   
   if (clientId && redirectUri) {
     console.log('\nTest OAuth URL can be constructed (not printed to avoid leaking client ID).');

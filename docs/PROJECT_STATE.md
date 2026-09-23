@@ -1,23 +1,76 @@
 # PROJECT_STATE.md — SkillForge Persistent State
 
-CURRENT_PHASE: 4 (API contract consistency)
-CURRENT_STATUS: PHASE 4 COMPLETE — reviewer PASS; STOP, do not start Phase 5 without explicit instruction
+CURRENT_PHASE: 5 (Authentication and OAuth)
+CURRENT_STATUS: PHASE 5 COMPLETE — reviewer PASS; STOP, do not start Phase 6 without explicit instruction
 LAST_VERIFIED: 2026-09-23
-LAST_COMMIT: (Phase 3 closure commit) "Harden backend runtime and middleware"
+LAST_COMMIT: (Phase 5 closure commit) "Harden authentication and OAuth flow"
 
 ---
 
 ## Current Phase
 
-Phase 4 — API contract consistency. Make frontend service calls match backend
-routes exactly in dev and prod, without inventing endpoints.
+Phase 5 — Authentication and OAuth. Secure and stabilize the existing
+authentication and OAuth implementation without replacing its architecture.
 
 ## Current Objective
 
-Per `docs/PRODUCTION_PLAN.md` Phase 4: resolve the `/api/api` double prefix,
-reconcile auth path conventions (D-005), implement the two live-demanded
-missing routes, align course instructor response shapes. Then STOP and await
-approval for Phase 5.
+Per `docs/PRODUCTION_PLAN.md` Phase 5: implement real OAuth CSRF state
+handling with existing cookie support, unify the redirect-URI env name
+(`GOOGLE_REDIRECT_URI`), align callback behavior and docs. Then STOP and
+await approval for Phase 6.
+
+## Completed Work (Phase 5)
+
+- OAuth CSRF fixed (verified, not assumed): `GET /auth/google` used
+  `Math.random()` state and never verified it. Now `crypto.randomBytes(32)`
+  hex state in an `HttpOnly`, `SameSite=Lax`, prod-only-`Secure`, 10-minute
+  `oauth_state` cookie; `/google/callback` compares cookie vs query with
+  `crypto.timingSafeEqual` (fail-closed) BEFORE any code exchange, clears the
+  cookie on consumption (single-use), and redirects `invalid_state` on
+  missing/mismatch. No session/Redis store, no new dependencies (ADR-003,
+  D-002 decided). New `src/lib/oauthState.ts` + 12-assertion jest suite.
+- Token escaping: `GET /auth/callback?token=` interpolated the raw value
+  into inline `<script>` (reflected XSS). Now escaped; JWT-shaped tokens pass
+  through byte-identical. Provider-error echo now `encodeURIComponent`-ed.
+- Env unification (D-001 decided, `GOOGLE_REDIRECT_URI` wins):
+  `src/config/checkenv.ts`, `src/scripts/check-env.ts`,
+  `src/scripts/check-oauth-config.ts`, `src/scripts/start-auth-test.ts`,
+  `README.md` renamed off `GOOGLE_CALLBACK_URL`. No live code used that name.
+- Token storage (D-003 decided, ADR-004): `localStorage` kept — cookie
+  migration would be a forbidden redesign; the demonstrated theft vector
+  (unescaped interpolation) was removed instead, and tokens stay out of logs
+  (sensitive-log grep: only 3 generic no-value messages).
+- Middleware now enforces the `Bearer` scheme the frontend always sends.
+  Passwords verified unchanged-correct (bcrypt cost 10, generic errors, no
+  plaintext logs); logout verified correct-as-stateless (client-side clear,
+  no server state); `/me` identity verified (verify + DB lookup); JWT
+  claims/expiry (7d HS256) kept as the existing contract.
+- README OAuth section corrected: truthful CSRF paragraph, real test steps
+  (phantom `/auth/test-google` and `/auth/debug-page` removed).
+- Honestly unverified (no DB / no Google credentials here): real provider
+  code-exchange success; valid-token DB-accept path. Both marked NOT
+  EXECUTED, never claimed.
+- `git diff --check` clean. No schema, route-inventory, nginx-structural,
+  session, or dependency changes.
+
+## Verified Commands (Phase 5, actual output)
+
+| Command (workdir) | Result |
+|---|---|
+| `npx tsc --noEmit -p tsconfig.json` (skillforge-backend) | PASS — exit 0 |
+| `npm run build` (skillforge-backend) | PASS — exit 0 |
+| `npx jest` (skillforge-backend) | PASS — 2 suites, 13 tests (12 new real `oauthState` assertions + placeholder) |
+| `npx tsc --noEmit -p tsconfig.app.json` (frontend) | only the 2 documented Phase-7 residual errors; nothing new |
+| `npx vitest run` (frontend) | 2 files / 6 failed, 9 passed — identical to baseline; no regression (no `frontend/src` changes) |
+| OAuth `/auth/google` probe | 302 + `oauth_state` 64-hex cookie: HttpOnly, SameSite=Lax, Max-Age=600; Secure absent in dev (prod-only by design) |
+| OAuth CASE B (no cookie) / CASE C (wrong cookie) | both → `302 .../auth/callback?error=invalid_state`, cookie cleared |
+| OAuth valid-state gate | matching cookie+param accepted (flow continues to `missing_code`); tampered param → `invalid_state` |
+| OAuth CASE A full success / CASE D reuse / CASE E expiry | NOT EXECUTED live (no provider/DB); reuse bounded by clear-on-consume + 10-min expiry by design; D/E browser+store enforced |
+| JWT missing/scheme/malformed/wrong-secret/expired probes | all 401; valid-accept NOT EXECUTED live (no PostgreSQL; code path unchanged) |
+| Password probes | `POST /login {}` → 400; no `password` in any `console.*` call (grep) |
+| `/callback` XSS probes | benign token → 200 page; breakout payload fully neutralized in HTML |
+| `git diff --check` | clean (exit 0) |
+| Reviewer (`general` subagent per `.opencode/agents/reviewer.md`) | PASS (tsc/build/jest re-run; boot probes re-run; scope verified) |
 
 ## Completed Work (Phase 4)
 
@@ -306,6 +359,20 @@ Recorded but not re-run in this session (same environment, prior evidence):
 | `git diff --check` | clean (exit 0) |
 | Reviewer (`general` subagent per `.opencode/agents/reviewer.md`) | PASS (first run FAIL caught an untouched `/user` string mapping; fixed, re-verified, second run PASS) |
 
+## Files Changed in Current Phase (Phase 5)
+
+New: `skillforge-backend/src/lib/oauthState.ts`,
+`skillforge-backend/src/lib/__tests__/oauthState.test.ts` (12 real
+assertions). Modified: `skillforge-backend/src/routes/auth.ts` (CSPRNG state,
+hardened cookie, state gate + clear, error encoding, token escaping),
+`src/middleware/auth.ts` (Bearer enforcement), `src/config/checkenv.ts` +
+3 scripts + `README.md` (redirect-URI unification, truthful OAuth docs),
+`AGENTS.md` (D-001 note), `docs/DECISIONS.md` (ADR-003/ADR-004, D-001–D-003
+decided), `docs/PROJECT_STATE.md` (this file). No `package.json`, schema,
+route-inventory, nginx-structural, session, frontend, or test-infrastructure
+changes. (`tsconfig.*.tsbuildinfo` churn from typecheck runs reverted,
+uncommitted.)
+
 ## Files Changed in Current Phase (Phase 4)
 
 Backend: `skillforge-backend/src/server.ts` (`/api/auth` dual mount +
@@ -387,9 +454,17 @@ Recorded for later phases; do not fix early.
   `hooks/useAuth.ts`, `services/user.ts`, `hooks/useApi.ts`, unrouted
   `CourseDetails.tsx` await Phase 7 removal; backend OAuth callback still
   unproxied by nginx in Docker (Phase 5/10).
-- Phase 5: `GOOGLE_REDIRECT_URI` (server/compose) vs `GOOGLE_CALLBACK_URL`
-  (docs/scripts/checkenv.ts); OAuth callback redirect vs nginx SPA catch-all;
-  README-referenced `/auth/test-google` and `/auth/debug-page` do not exist.
+- Phase 5 (residual, verified 2026-09-23): CSRF state now CSPRNG + verified
+  single-use (ADR-003); redirect-URI unified to `GOOGLE_REDIRECT_URI`
+  (D-001); token storage stays `localStorage` by decision (ADR-004);
+  README OAuth section truthful. Remaining by design: real Google
+  code-exchange never executed here (no provider credentials — NOT
+  EXECUTED, user-run steps in README); valid-token DB-accept untested live
+  (no PostgreSQL); `Secure` cookie on prod `http://localhost` relies on
+  localhost-as-secure-context; stateless replay after consumption is bounded
+  by clear-on-consume + 10-min expiry (no server store by design); backend
+  OAuth callback still unproxied by nginx in Docker (Phase 10); 7d JWT
+  expiry kept as existing contract.
 - Phase 6: seed `course.create` (not upsert) can duplicate; no `@@index` on
   `Lesson.order`, `LessonProgress.enrollmentId`; progress math can produce NaN;
   committed generated Prisma client (`.so`/`.dll`) bloats repo.
@@ -413,7 +488,9 @@ Recorded for later phases; do not fix early.
 
 See `docs/DECISIONS.md`. Phase 0 recorded evidence-based observations only.
 Phase 1 added one security decision: ADR-001 (no hardcoded secret fallbacks;
-production fail-fast on missing `JWT_SECRET`).
+production fail-fast on missing `JWT_SECRET`). Phase 4 added ADR-002
+(`/api/auth/*` canonical frontend auth prefix). Phase 5 added ADR-003
+(cookie-based OAuth CSRF state) and ADR-004 (keep `localStorage` JWT).
 
 ## Risks
 
@@ -436,6 +513,6 @@ production fail-fast on missing `JWT_SECRET`).
 
 ## Next Allowed Action
 
-Phase 4 gate PASSED (reviewer PASS 2026-09-23). STOP. Await explicit
-instruction to begin Phase 5 (Authentication and OAuth). Do not
-start Phase 5 automatically.
+Phase 5 gate PASSED (reviewer PASS 2026-09-23). STOP. Await explicit
+instruction to begin Phase 6 (Database and Prisma). Do not
+start Phase 6 automatically.
