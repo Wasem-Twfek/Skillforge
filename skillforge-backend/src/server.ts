@@ -1,4 +1,4 @@
-import dotenv from 'dotenv';
+import 'dotenv/config';
 import express from 'express';
 import cors from 'cors';
 import authRoutes from './routes/auth';
@@ -10,14 +10,9 @@ import quizRoutes from './routes/quizzes';
 import healthRoutes from './routes/health';
 import { config } from './config/config';
 
-if (!process.env.DOCKER) {
-  dotenv.config();
-}
-
 const app = express();
 const port = Number(config.PORT);
 
-// Middleware
 app.use(cors({
   origin: config.FRONTEND_URL,
   credentials: true,
@@ -26,7 +21,6 @@ app.use(cors({
 }));
 app.use(express.json());
 
-// Root route - API overview
 app.get('/', (_req, res) => {
   res.json({
     name: 'SkillForge API',
@@ -53,7 +47,6 @@ app.get('/', (_req, res) => {
   });
 });
 
-// Routes
 app.use('/health', healthRoutes);
 app.use('/auth', authRoutes);
 app.use('/api/courses', courseRoutes);
@@ -65,7 +58,6 @@ app.get('/api/protected', authenticate, (req, res) => {
   res.json({ message: 'This is a protected route', user: req.user });
 });
 
-// Error handling
 app.use((err: Error, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
   console.error(err);
   res.status(500).json({ error: 'Something went wrong!' });
