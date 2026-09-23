@@ -12,7 +12,7 @@ export default defineConfig({
       injectRegister: 'auto',
       strategies: 'generateSW',
       registerType: 'prompt',
-      includeAssets: ['favicon.ico', 'apple-touch-icon.png', 'masked-icon.svg'],
+      includeAssets: ['icons/apple-touch-icon.png', 'icons/masked-icon.svg'],
       manifest: {
         name: 'SkillForge',
         short_name: 'SkillForge',
