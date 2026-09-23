@@ -7,30 +7,29 @@ const Dashboard: React.FC = () => {
   const { user } = useAuth();
   const { data: userCourses, isLoading, error } = useUserCourses();
 
-  if (isLoading) return <div>Loading...</div>;
-  if (error) return <div>Error: {error.message}</div>;
-
-  // Memoize the courses array to prevent unnecessary re-creation
-  const courses: CourseState[] = useMemo(() => 
-    Array.isArray(userCourses) ? userCourses : [],
+  const courses: CourseState[] = useMemo(
+    () => (Array.isArray(userCourses) ? userCourses : []),
     [userCourses]
   );
-  
-  // Memoize expensive calculations
+
   const { inProgressCourses, completedCourses, notStartedCourses, totalProgress } = useMemo(() => {
     const inProgress = courses.filter((course) => course.progress > 0 && course.progress < 100);
     const completed = courses.filter((course) => course.progress === 100);
     const notStarted = courses.filter((course) => course.progress === 0);
-    const total = courses.length ? 
-      courses.reduce((acc, course) => acc + course.progress, 0) / courses.length : 0;
-    
-    return { 
-      inProgressCourses: inProgress, 
-      completedCourses: completed, 
-      notStartedCourses: notStarted, 
-      totalProgress: total 
+    const total = courses.length
+      ? courses.reduce((acc, course) => acc + course.progress, 0) / courses.length
+      : 0;
+
+    return {
+      inProgressCourses: inProgress,
+      completedCourses: completed,
+      notStartedCourses: notStarted,
+      totalProgress: total,
     };
   }, [courses]);
+
+  if (isLoading) return <div>Loading...</div>;
+  if (error) return <div>Error: {error.message}</div>;
 
   return (
     <div className="container mx-auto px-4 py-8 bg-white dark:bg-gray-900 transition-colors duration-300">
@@ -42,7 +41,7 @@ const Dashboard: React.FC = () => {
 
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6 mb-8">
           <h2 className="text-2xl font-bold text-gray-800 dark:text-white mb-6">Learning Progress</h2>
-          
+
           <div className="mb-8">
             <div className="flex justify-between items-center mb-2">
               <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Overall Progress</span>
@@ -52,7 +51,7 @@ const Dashboard: React.FC = () => {
               <div
                 className="bg-blue-500 dark:bg-blue-400 h-2.5 rounded-full"
                 style={{ width: `${totalProgress}%` }}
-              ></div>
+              />
             </div>
           </div>
 

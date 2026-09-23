@@ -1,155 +1,210 @@
 # SkillForge
 
-SkillForge is an AI-powered microlearning platform designed to help users learn skills like coding, design, and languages in 5-minute daily sessions.
+**SkillForge** is a full-stack microlearning platform for short, focused learning sessions across areas such as programming, design, and languages.
 
-## Features
+The project combines a React/TypeScript frontend with an Express/TypeScript backend, PostgreSQL persistence, Redis, Prisma, authentication, and Docker-based local deployment.
 
-- **Engaging Homepage**: Modern, interactive landing page with multiple sections
-- **Popular Skills**: Interactive carousel showcase of top courses
-- **AI Recommendations**: Personalized skill recommendations based on interests
-- **Daily Streak Tracking**: Gamified learning progress visualization
-- **Why SkillForge Works**: Educational methodology explanation
-- **Testimonials**: User success stories
-- **Newsletter & Call-to-Action**: Sign-up and conversion elements
+> **Project status:** active portfolio project. Some product and authentication flows are still being refined.
 
-## 🔧 Fixing Google OAuth Authentication Issues
+## What it demonstrates
 
-If you're experiencing the **"missing_code"** error during Google authentication, follow these steps to fix it:
+- User authentication and protected application routes
+- Course, lesson, enrollment, progress, quiz, and attempt domain models
+- React-based learning interface with client-side state management
+- REST API built with Express and TypeScript
+- PostgreSQL persistence through Prisma ORM
+- Redis integration for backend caching/infrastructure
+- Google OAuth integration
+- Docker Compose environment for PostgreSQL, Redis, backend, and frontend
+- Automated frontend testing with Vitest and Testing Library
+- PWA support for the frontend
 
-### 1. Set Up Environment Variables
+## Architecture
 
-The most common cause of authentication failures is missing or incorrect environment variables.
-
-**Backend (.env file in skillforge-backend/):**
-
-```bash
-# Server Configuration
-PORT=3001
-NODE_ENV=development
-
-# Frontend URL (used for CORS and redirect)
-FRONTEND_URL=http://localhost:3000
-
-# JWT Configuration 
-JWT_SECRET=your-secure-jwt-secret-key-goes-here
-
-# Google OAuth Configuration
-GOOGLE_CLIENT_ID=746106499332-j5s5ecd56gohlup1acg1lvor7ggeo01j.apps.googleusercontent.com
-GOOGLE_CLIENT_SECRET=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
-GOOGLE_CALLBACK_URL=http://localhost:3001/auth/google/callback
-
-# Session Configuration
-SESSION_SECRET=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
+```text
+┌──────────────────────┐
+│   React + TypeScript │
+│        Frontend      │
+└──────────┬───────────┘
+           │ HTTP / REST
+           ▼
+┌──────────────────────┐
+│ Express + TypeScript │
+│       Backend        │
+└───────┬────────┬─────┘
+        │        │
+        ▼        ▼
+   PostgreSQL   Redis
+    (Prisma)   (ioredis)
 ```
 
-**Frontend (.env file in skillforge/):**
+The application can also be started as a Docker Compose stack with PostgreSQL, Redis, the backend API, and an Nginx-served frontend.
 
-```bash
-# API URL (Backend Server URL)
-VITE_API_URL=http://localhost:3001
+## Tech stack
 
-# Environment
-NODE_ENV=development
+### Frontend
+- React
+- TypeScript
+- Vite
+- React Router
+- TanStack Query
+- Zustand
+- Tailwind CSS
+- Framer Motion
+- Vitest + Testing Library
+- vite-plugin-pwa
+
+### Backend
+- Node.js
+- Express
+- TypeScript
+- Prisma
+- PostgreSQL
+- Redis / ioredis
+- JWT authentication
+- Google OAuth
+- Jest
+
+### Infrastructure
+- Docker
+- Docker Compose
+- Nginx
+
+## Domain model
+
+The backend uses Prisma models for the main learning workflow:
+
+- **User**
+- **Course**
+- **Lesson**
+- **Enrollment**
+- **LessonProgress**
+- **Quiz**
+- **Attempt**
+
+This provides a foundation for tracking learning content, enrollment, progress, and assessment results.
+
+## Repository structure
+
+```text
+Skillforge/
+├── frontend/              # React/Vite application
+├── skillforge-backend/    # Express API and Prisma schema
+├── docker-compose.yml     # Local multi-service environment
+├── nginx.conf             # Frontend/API reverse-proxy configuration
+└── .env.example           # Example Docker environment configuration
 ```
 
-### 2. Google Cloud Console Configuration
-
-1. Go to the [Google Cloud Console](https://console.cloud.google.com/)
-2. Select your project or create a new one
-3. Navigate to "APIs & Services" > "Credentials"
-4. Create or edit an OAuth 2.0 Client ID
-5. Add the following authorized redirect URIs:
-   - `http://localhost:3001/auth/google/callback` (development)
-   - Your production callback URL if applicable
-
-### 3. Common Issues and Solutions
-
-#### "missing_code" Error:
-
-- **Cause 1**: User is refreshing or directly accessing the callback URL
-  - **Fix**: We've added protection for this in the latest code
-  
-- **Cause 2**: Redirect URI mismatch
-  - **Fix**: Ensure the GOOGLE_CALLBACK_URL in your .env matches exactly with the URI registered in Google Cloud Console
-
-- **Cause 3**: Google OAuth configuration issues
-  - **Fix**: Verify client ID and secret are correct, and that the OAuth screen is properly configured
-
-#### CSRF Protection:
-
-We've implemented state parameter validation to protect against CSRF attacks. The state parameter is generated and verified between the frontend and backend.
-
-### 4. Testing the OAuth Flow
-
-To test your OAuth configuration:
-
-1. Start both the frontend and backend servers
-2. Navigate to `http://localhost:3001/auth/test-google` in your browser
-3. Click the provided test URL to simulate the OAuth flow
-4. If successful, you'll be redirected to the lessons page
-
-### 5. Debugging Tools
-
-- Check the backend console logs for authentication process details
-- Use the debug info in the AuthCallback component
-- Access `http://localhost:3001/auth/debug-page` for a manual token testing tool
-
-## 🚀 Getting Started
+## Getting started
 
 ### Prerequisites
 
-- Node.js (v16+)
-- PostgreSQL database
-- Google Cloud Platform account with OAuth credentials
+- Node.js 20+
+- npm
+- PostgreSQL 16+ (or Docker)
+- Redis (or Docker)
 
-### Installation
+### 1. Clone the repository
 
-1. Clone the repository
-2. Install dependencies:
-   ```bash
-   cd skillforge
-   npm install
-   cd skillforge-backend
-   npm install
-   ```
-3. Set up environment variables (see above)
-4. Run database migrations:
-   ```bash
-   cd skillforge-backend
-   npm run prisma:migrate
-   ```
+```bash
+git clone https://github.com/wasem15/Skillforge.git
+cd Skillforge
+```
 
-### Running the app
+### 2. Configure environment variables
 
-1. Start the backend:
-   ```bash
-   cd skillforge-backend
-   npm run dev
-   ```
-2. Start the frontend:
-   ```bash
-   cd skillforge
-   npm run dev
-   ```
-3. Open `http://localhost:3000` in your browser
+Copy the example configuration and provide your local values:
 
-## 🔍 Troubleshooting
+```bash
+cp .env.example .env
+cp skillforge-backend/.env.example skillforge-backend/.env
+```
 
-If you continue experiencing issues:
+Never commit real credentials or `.env` files.
 
-1. Check browser console and network tab for error details
-2. Verify all environment variables are set correctly
-3. Look at browser cookies and session storage for token and state persistence
-- **src/components/home/**: Contains all the homepage components
-- **src/pages/**: Main application pages
-- **src/data/**: Mock data for courses
-- **public/screenshots/**: Application mockup images
+### 3. Install dependencies
 
-## Tech Stack
+```bash
+npm install
+cd frontend
+npm install
+cd ../skillforge-backend
+npm install
+cd ..
+```
 
-- React
-- TypeScript
-- Tailwind CSS
-- Framer Motion
-- Lucide Icons
-- Vite
+### 4. Prepare the database
+
+From `skillforge-backend/`:
+
+```bash
+npm run prisma:generate
+npm run prisma:migrate
+```
+
+### 5. Run the application
+
+Start the backend:
+
+```bash
+cd skillforge-backend
+npm run dev
+```
+
+In another terminal, start the frontend:
+
+```bash
+cd frontend
+npm run dev
+```
+
+Use the local URLs printed by Vite and the backend during startup.
+
+## Docker
+
+The repository includes a Docker Compose setup for the main services:
+
+```bash
+docker compose up --build
+```
+
+This starts PostgreSQL, Redis, the backend API, and the Nginx-served frontend.
+
+**Production note:** provide real secrets through the environment. Do not rely on the development fallback values in `docker-compose.yml`.
+
+## Testing
+
+Frontend tests:
+
+```bash
+cd frontend
+npm test
+npm run test:coverage
+```
+
+Backend tests:
+
+```bash
+cd skillforge-backend
+npm test
+```
+
+## Security notes
+
+- Environment files are intentionally excluded from version control.
+- OAuth client secrets and JWT secrets must be supplied through environment variables.
+- Credentials that have previously appeared in Git history should be rotated and the affected Git history should be scrubbed before using those credentials again.
+- Debug logging should be disabled or restricted before production deployment.
+
+## Roadmap
+
+- Refine the authentication and OAuth flow
+- Improve course authoring and learning workflows
+- Expand automated backend/API test coverage
+- Add production-ready configuration and secret validation
+- Improve deployment and CI/CD automation
+- Continue simplifying the frontend/backend repository structure
+
+## License
+
+License information should be added here once the project license is finalized.

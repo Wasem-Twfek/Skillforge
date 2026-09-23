@@ -28,13 +28,11 @@ export function useOptimizedQuery<TData, TError = Error>(
 
   // Get relevant state and actions from the app store
   const { 
-    isOffline, 
-    cachedCourses, 
-    cacheCourse, 
+    isOffline,
+    cacheCourse,
     cacheCourses 
   } = useShallowStore(useAppStore, state => ({
     isOffline: state.isOffline,
-    cachedCourses: state.cachedCourses,
     cacheCourse: state.cacheCourse,
     cacheCourses: state.cacheCourses
   }));

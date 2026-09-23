@@ -160,21 +160,19 @@ export function getPerformanceMetrics(): PerformanceMetrics {
  * @param componentName The name of the component
  */
 export function useRenderTimeTracking(componentName: string): void {
-  if (process.env.NODE_ENV !== 'production' && 
-      (import.meta as any).env?.VITE_ENABLE_PERFORMANCE_MONITORING !== 'true') {
-    return;
-  }
-  
-  const startTime = performance.now();
-  
-  // Use React's layout effect to measure render time
+  const monitoringEnabled =
+    process.env.NODE_ENV === 'production' ||
+    (import.meta as any).env?.VITE_ENABLE_PERFORMANCE_MONITORING === 'true';
+
+  const startTime = React.useRef(performance.now());
+
   React.useLayoutEffect(() => {
-    trackRenderTime(componentName, startTime);
-    
-    return () => {
-      // Track unmount time if needed
-    };
-  }, [componentName, startTime]);
+    if (!monitoringEnabled) {
+      return;
+    }
+
+    trackRenderTime(componentName, startTime.current);
+  }, [componentName, monitoringEnabled]);
 }
 
 // Initialize performance monitoring when this module is imported

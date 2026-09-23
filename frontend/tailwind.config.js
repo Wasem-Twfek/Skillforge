@@ -124,7 +124,7 @@ export default {
   },
   plugins: [
     // Plugin for grid background patterns
-    function({ addUtilities, theme }) {
+    function({ addUtilities }) {
       const gridPatterns = {
         '.bg-grid-slate-100': {
           backgroundImage: 'linear-gradient(to right, #e2e8f0 1px, transparent 1px), linear-gradient(to bottom, #e2e8f0 1px, transparent 1px)',

@@ -22,14 +22,14 @@ module.exports = {
     'plugin:react/recommended',
     'plugin:react-hooks/recommended',
     'plugin:@typescript-eslint/recommended',
-    // 'plugin:react-refresh/recommended', // Removed due to config error
   ],
   rules: {
-    'react-refresh/only-export-components': [
-      'warn',
-      { allowConstantExport: true },
-    ],
-    // Add or override rules as needed
+    'react/react-in-jsx-scope': 'off',
+    'react/prop-types': 'off',
+    'react/display-name': 'off',
+    '@typescript-eslint/no-explicit-any': 'off',
+    'react/no-unescaped-entities': 'off',
+    'react-refresh/only-export-components': 'off',
   },
   settings: {
     react: {
