@@ -59,7 +59,7 @@ PHASE 1 GATE:
 
 ---
 
-## PHASE 2 — Backend build and startup
+## PHASE 2 — Backend build and startup (COMPLETE)
 
 - Objective: make the backend compile and start from `src/`.
 - Allowed: create `skillforge-backend/src/config/config.ts` (env-backed,

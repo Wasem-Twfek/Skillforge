@@ -3,7 +3,7 @@
 CURRENT_PHASE: 2 (Backend build and startup)
 CURRENT_STATUS: PHASE 2 COMPLETE — reviewer PASS; STOP, do not start Phase 3 without explicit instruction
 LAST_VERIFIED: 2026-09-23
-LAST_COMMIT: (Phase 2 commit) "Phase 2: add env-backed backend config so the backend builds and starts"
+LAST_COMMIT: (Phase 2 closure commit) "Fix backend configuration and build startup"
 
 ---
 
