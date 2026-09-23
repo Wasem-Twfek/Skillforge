@@ -177,7 +177,7 @@ router.get('/google/callback', async (req, res) => {
     res.redirect(redirectUrl.toString());
   } catch (err: any) {
     console.error('Google OAuth error:', err);
-    res.redirect(`${FRONTEND_URL}/auth/callback?error=server_error&message=${encodeURIComponent(err.message || 'Unknown error')}`);
+    res.redirect(`${FRONTEND_URL}/auth/callback?error=server_error`);
   }
 });
 
