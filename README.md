@@ -20,7 +20,7 @@ If you're experiencing the **"missing_code"** error during Google authentication
 
 The most common cause of authentication failures is missing or incorrect environment variables.
 
-**Backend (.env file in skillforge-backend/):**
+**Backend (.env file in skillforge-backend/ — see `skillforge-backend/.env.example`):**
 
 ```bash
 # Server Configuration
@@ -30,17 +30,22 @@ NODE_ENV=development
 # Frontend URL (used for CORS and redirect)
 FRONTEND_URL=http://localhost:3000
 
-# JWT Configuration 
-JWT_SECRET=your-secure-jwt-secret-key-goes-here
+# JWT Configuration (required — no default; generate a long random value)
+JWT_SECRET=change-me-to-a-long-random-value-in-local-env
 
-# Google OAuth Configuration
-GOOGLE_CLIENT_ID=746106499332-j5s5ecd56gohlup1acg1lvor7ggeo01j.apps.googleusercontent.com
-GOOGLE_CLIENT_SECRET=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
+# Google OAuth Configuration (leave empty to disable Google login locally)
+GOOGLE_CLIENT_ID=
+GOOGLE_CLIENT_SECRET=
 GOOGLE_CALLBACK_URL=http://localhost:3001/auth/google/callback
 
-# Session Configuration
-SESSION_SECRET=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
+# Session Configuration (required if sessions are enabled)
+SESSION_SECRET=change-me-to-a-long-random-value-in-local-env
 ```
+
+> Security note: any credential previously committed to this repository must be
+> treated as compromised. Rotate the Google OAuth client secret, JWT secret,
+> and session secret in Google Cloud Console / your deployment environment.
+> Never commit real `.env` values — only `.env.example` placeholders.
 
 **Frontend (.env file in skillforge/):**
 

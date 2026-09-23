@@ -39,10 +39,14 @@ services:
     environment:
       - NODE_ENV=production
       - DOCKER=true
+      # POSTGRES_* defaults below are local-dev convenience only.
+      # Override them in production via root .env (see .env.example).
       - DATABASE_URL=postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@postgres:5432/${POSTGRES_DB:-skillforge}?schema=public
       - REDIS_URL=redis://redis:6379
       - PORT=3001
-      - JWT_SECRET=${JWT_SECRET:-your_jwt_secret}
+      # No insecure default on purpose: the backend fails fast at startup when
+      # JWT_SECRET is missing in production. Set it via env / root .env.
+      - JWT_SECRET=${JWT_SECRET:-}
       - FRONTEND_URL=http://localhost
       - GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID:-}
       - GOOGLE_CLIENT_SECRET=${GOOGLE_CLIENT_SECRET:-}

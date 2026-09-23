@@ -63,7 +63,7 @@ app.get('/', (req, res) => {
       
       <div class="card">
         <h2>Current Configuration</h2>
-        <p>Google Client ID: ${clientId ? clientId.substring(0, 8) + '...' : 'Not configured'}</p>
+        <p>Google Client ID: ${clientId ? 'Configured' : 'Not configured'}</p>
         <p>Google Client Secret: ${clientSecret ? '✓ Configured' : 'Not configured'}</p>
         <p>Google Callback URL: ${callbackUrl || 'Not configured'}</p>
         <p>Frontend URL: ${frontendUrl || 'Not configured'}</p>
@@ -117,7 +117,7 @@ app.get('/test-oauth', (req, res) => {
   googleAuthUrl.searchParams.append('access_type', 'offline');
   googleAuthUrl.searchParams.append('prompt', 'consent');
   
-  console.log('Redirecting to Google OAuth:', googleAuthUrl.toString());
+  console.log('Redirecting to Google OAuth (URL not logged to avoid leaking client ID)');
   res.redirect(googleAuthUrl.toString());
 });
 

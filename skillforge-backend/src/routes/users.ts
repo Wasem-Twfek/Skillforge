@@ -1,4 +1,5 @@
 import express from 'express';
+import bcrypt from 'bcrypt';
 import { authenticate } from '../middleware/auth';
 import prisma from '../lib/prisma';
 
@@ -44,15 +45,19 @@ router.get('/:id', authenticate, async (req, res) => {
   }
 });
 
-// Create user
+// Create user (password is always hashed with bcrypt before storage)
 router.post('/', async (req, res) => {
   try {
     const { name, email, password } = req.body;
+    if (!name || !email || !password) {
+      return res.status(400).json({ error: 'Name, email, and password are required' });
+    }
+    const hashedPassword = await bcrypt.hash(password, 10);
     const user = await prisma.user.create({
       data: {
         name,
         email,
-        password, // Note: In production, hash the password before storing
+        password: hashedPassword,
       },
     });
     res.status(201).json({

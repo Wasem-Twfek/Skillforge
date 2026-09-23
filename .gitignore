@@ -1,0 +1,40 @@
+# Dependencies
+node_modules/
+**/node_modules/
+
+# Build output (generated — never commit)
+dist/
+**/dist/
+build/
+**/build/
+**/.vite/
+**/.cache/
+**/.turbo/
+**/*.tsbuildinfo
+
+# Environment files (real secrets — never commit)
+# Keep .env.example tracked as placeholder-only template.
+.env
+**/.env
+.env.local
+**/.env.local
+!.env.example
+!**/.env.example
+
+# Test / coverage
+coverage/
+**/coverage/
+
+# Logs
+*.log
+npm-debug.log*
+yarn-error.log*
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# Prisma generated client (regenerate via prisma generate)
+skillforge-backend/prisma/src/generated/

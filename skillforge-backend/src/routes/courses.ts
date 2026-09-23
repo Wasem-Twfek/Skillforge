@@ -43,18 +43,12 @@ router.get('/', async (req, res) => {
 
 // Get user's enrolled courses
 router.get('/user', authenticate, async (req: Request, res) => {
-  console.log('[/api/courses/user] Request received');
-  console.log('[/api/courses/user] Headers:', req.headers);
-  console.log('[/api/courses/user] User:', req.user);
-  
   try {
     const userId = req.user?.id;
     if (!userId) {
       console.error('[/api/courses/user] No user ID found in request');
       return res.status(401).json({ error: 'User not authenticated' });
     }
-    
-    console.log('[/api/courses/user] Fetching enrollments for user:', userId);
 
     const enrollments = await prisma.enrollment.findMany({
       where: {

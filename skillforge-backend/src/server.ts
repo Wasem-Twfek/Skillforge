@@ -16,18 +16,28 @@ if (!process.env.DOCKER) {
     require('dotenv').config({ path: require('path').resolve(__dirname, '..', '.env') });
     console.log('Successfully loaded .env file');
   } catch (error) {
-    console.warn('Error loading .env file:', error);
+    console.warn('Error loading .env file:', error instanceof Error ? error.message : 'unknown error');
   }
 }
 
-// Fallback environment variables
+// Default environment variables (non-secret only).
+// Secrets must come from the environment — no hardcoded credential fallbacks.
 process.env.PORT = process.env.PORT || '3001';
 process.env.NODE_ENV = process.env.NODE_ENV || 'development';
 process.env.FRONTEND_URL = process.env.FRONTEND_URL || 'http://localhost:3000';
-process.env.JWT_SECRET = process.env.JWT_SECRET || 'your-secure-jwt-secret-key-goes-here';
 process.env.GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID || '';
 process.env.GOOGLE_CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET || '';
 process.env.GOOGLE_REDIRECT_URI = process.env.GOOGLE_REDIRECT_URI || '';
+
+// Fail fast when the JWT secret is missing in production. In development the
+// auth middleware/config layer enforces the same requirement; no dev-secret
+// fallback is provided on purpose so production can never silently use one.
+if (process.env.NODE_ENV === 'production' && !process.env.JWT_SECRET) {
+  throw new Error('Missing required environment variable JWT_SECRET in production');
+}
+if (!process.env.JWT_SECRET) {
+  console.warn('Warning: JWT_SECRET is not set. Authentication will fail until it is configured.');
+}
 
 console.log('Environment variables loaded:', {
   PORT: process.env.PORT,
@@ -51,11 +61,9 @@ app.use(cors({
 }));
 app.use(express.json());
 
-// Debug middleware - log all requests
-app.use((req, res, next) => {
+// Minimal request log — never log headers, tokens, or user objects.
+app.use((req, _res, next) => {
   console.log(`[${new Date().toISOString()}] ${req.method} ${req.originalUrl}`);
-  console.log('  Headers:', req.headers);
-  console.log('  User:', (req as any).user);
   next();
 });
 

@@ -27,8 +27,6 @@ declare global {
 }
 
 export const authenticate = async (req: Request, res: Response, next: NextFunction) => {
-	console.log('Auth middleware - Headers:', req.headers);
-	console.log('Auth middleware - Token:', req.headers.authorization?.split(' ')[1]);
 	try {
 		const token = req.headers.authorization?.split(' ')[1];
 
@@ -37,7 +35,6 @@ export const authenticate = async (req: Request, res: Response, next: NextFuncti
 		}
 
 		const decoded = jwt.verify(token, config.JWT_SECRET) as { id: string };
-		console.log('Auth middleware - Decoded token:', decoded);
 		
 		const user = await prisma.user.findUnique({
 			where: { id: decoded.id },
@@ -52,8 +49,6 @@ export const authenticate = async (req: Request, res: Response, next: NextFuncti
 			},
 		});
 		
-		console.log('Auth middleware - Found user:', user);
-
 		if (!user) {
 			return res.status(401).json({ error: 'User not found' });
 		}
@@ -61,7 +56,7 @@ export const authenticate = async (req: Request, res: Response, next: NextFuncti
 		req.user = user as AuthenticatedUser;
 		next();
 	} catch (error) {
-		console.error('Authentication error:', error);
+		console.error('Authentication error:', error instanceof Error ? error.message : 'unknown error');
 		res.status(401).json({ error: 'Invalid token' });
 	}
 };
