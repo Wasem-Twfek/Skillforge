@@ -23,6 +23,40 @@ router.get('/', authenticate, async (req, res) => {
   }
 });
 
+// Update own profile (used by the profile UI)
+router.put('/profile', authenticate, async (req, res) => {
+  try {
+    const userId = req.user?.id;
+    if (!userId) {
+      return res.status(401).json({ error: 'User not authenticated' });
+    }
+    const { name, bio, avatar } = req.body;
+    if (name === undefined && bio === undefined && avatar === undefined) {
+      return res.status(400).json({ error: 'Nothing to update' });
+    }
+    const user = await prisma.user.update({
+      where: { id: userId },
+      data: {
+        ...(name !== undefined ? { name } : {}),
+        ...(bio !== undefined ? { bio } : {}),
+        ...(avatar !== undefined ? { avatar } : {}),
+      },
+      select: {
+        id: true,
+        email: true,
+        name: true,
+        bio: true,
+        avatar: true,
+        picture: true,
+      },
+    });
+    res.json(user);
+  } catch (error) {
+    console.error('Error updating profile:', error instanceof Error ? error.message : 'unknown error');
+    res.status(500).json({ error: 'Failed to update profile' });
+  }
+});
+
 // Get user by ID
 router.get('/:id', authenticate, async (req, res) => {
   try {

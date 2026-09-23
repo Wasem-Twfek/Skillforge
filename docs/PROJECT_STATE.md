@@ -1,7 +1,7 @@
 # PROJECT_STATE.md — SkillForge Persistent State
 
-CURRENT_PHASE: 3 (Backend architecture and hardening)
-CURRENT_STATUS: PHASE 3 COMPLETE — reviewer PASS; STOP, do not start Phase 4 without explicit instruction
+CURRENT_PHASE: 4 (API contract consistency)
+CURRENT_STATUS: PHASE 4 COMPLETE — reviewer PASS; STOP, do not start Phase 5 without explicit instruction
 LAST_VERIFIED: 2026-09-23
 LAST_COMMIT: (Phase 3 closure commit) "Harden backend runtime and middleware"
 
@@ -9,15 +9,67 @@ LAST_COMMIT: (Phase 3 closure commit) "Harden backend runtime and middleware"
 
 ## Current Phase
 
-Phase 3 — Backend architecture and hardening. Harden backend runtime behavior
-without redesigning APIs, auth, schema, or frontend.
+Phase 4 — API contract consistency. Make frontend service calls match backend
+routes exactly in dev and prod, without inventing endpoints.
 
 ## Current Objective
 
-Per `docs/PRODUCTION_PLAN.md` Phase 3: consolidate PrismaClient to the
-`src/lib/prisma.ts` singleton, apply minimal evidenced hardening (headers,
-body limit, error/log safety, shutdown), remove verified dead backend files,
-dedupe `/health`. Then STOP and await approval for Phase 4.
+Per `docs/PRODUCTION_PLAN.md` Phase 4: resolve the `/api/api` double prefix,
+reconcile auth path conventions (D-005), implement the two live-demanded
+missing routes, align course instructor response shapes. Then STOP and await
+approval for Phase 5.
+
+## Completed Work (Phase 4)
+
+- Double-prefix root cause (verified, not assumed): prod build bakes
+  `VITE_API_URL=/api` (`frontend/Dockerfile`) while every service path
+  already carries `/api`, so axios produced `/api/api/*` → backend 404
+  (nginx passes the path through unstripped). Fix: `VITE_API_URL=` (empty,
+  origin-only) + `||` → `??` fallbacks in `lib/axios.ts`,
+  `services/lessonService.ts`, `contexts/AuthContext.tsx` (empty string must
+  survive; only undefined/null fall back to dev `:3001`). `lessonService`
+  attempt path corrected to `${API_URL}/api/quizzes/:id/attempt` (its old
+  `:3001/api` default would otherwise misdirect prod).
+- Auth prefix convention (D-005 → ADR-002): frontend called `/api/auth/*`
+  but backend mounted only `/auth` (prod-only nginx rewrite). Backend now
+  serves the same router at `/api/auth` too; Vite dev proxy rewrites
+  `^/api/auth/` → `/auth/` mirroring nginx; `AuthContext` dropped the
+  prod-broken `getApiUrl()` (`''` on :80 → SPA) for relative `/api/auth/*`
+  on all five call sites (`/me` ×2, `/google`, `/login`, `/register`).
+- Missing routes with live callers (nothing invented): `GET
+  /api/courses/:id/lessons` (caller `useCourses.ts:74`; `Lesson.courseId` FK
+  evidence) and `PUT /api/users/profile` (caller `Profile.tsx:17`; accepts
+  `name/bio/avatar` from existing `User` columns, ignores `email`, mount-auth
+  enforced).
+- Response shapes: course list/user-courses no longer stringify `instructor`
+  (now `{id,name,avatar,bio}` from existing `User` columns, matching the
+  frontend `Course` type + 4 live components + mock data); detail extends the
+  instructor select the same way and includes `lesson.quiz` (live
+  `CourseDetail.tsx` reads it; 1-1 per schema). Enroll/progress/auth shapes
+  verified already matching — untouched.
+- Verified dead, intentionally untouched (Phase 7 removal): zustand
+  `hooks/useAuth.ts`, `services/user.ts`, `hooks/useApi.ts`, unrouted
+  `CourseDetails.tsx`, placeholder `Quizzes.tsx`, `submitQuizAttempt` (zero
+  callers each). Deferred (forbidden scope): query-filter semantics, model
+  drift (`rating/students/price/tags/duration`), `quizzes[]` vs `quiz`
+  (D-006 → Phase 7), NaN-progress (Phase 6).
+- `git diff --check` clean. No auth-logic, schema, nginx-structural, or
+  dependency changes.
+
+### Contract matrix (Phase 4)
+
+| Feature | Frontend | Backend | Req/Res/Auth | Status |
+|---|---|---|---|---|
+| Courses list (+query) | `GET /api/courses[?…]` (courseService) | `GET /api/courses` | query ignored; instructor now object | FIXED (was RESPONSE MISMATCH) |
+| User courses | `GET /api/courses/user` + token | same, per-route auth | instructor now object | FIXED |
+| Course detail | `GET /api/courses/:id` | same + `lesson.quiz`, instructor object | shapes aligned | FIXED |
+| Lessons by course | `GET /api/courses/:id/lessons` (useCourses) | **new** `GET /:id/lessons` | Lesson[] | FIXED (was MISSING) |
+| Enroll / progress | `POST …/enroll`, `POST …/progress` | same | matching | MATCH (untouched) |
+| Lessons list/detail | `GET /api/lessons[/:id]` | same, mount-authed | matching | MATCH |
+| Auth login/register/me/google | relative `/api/auth/*` (AuthContext) | `/auth` + **new** `/api/auth` mounts | matching | FIXED (was PATH MISMATCH in dev/prod) |
+| Update profile | `PUT /api/users/profile` (Profile) | **new** `PUT /profile`, mount-authed | user subset | FIXED (was MISSING) |
+| Prod prefix | base `''` + `/api/…` → `/api/…` | passthrough mounts | — | FIXED (was `/api/api` 404) |
+| Dead callers (useAuth/userService/useApi/attempt) | zero importers | n/a | — | DEAD, deferred to Phase 7 |
 
 ## Completed Work (Phase 3)
 
@@ -240,6 +292,34 @@ Recorded but not re-run in this session (same environment, prior evidence):
   (`globDirectory: './dist'` vs actual `outDir: '../dist'`) matched nothing. — Phase 8.
 - `node dist/server.js` failed at startup (Prisma not generated). — Phase 2.
 
+## Verified Commands (Phase 4, actual output)
+
+| Command (workdir) | Result |
+|---|---|
+| `npx tsc --noEmit -p tsconfig.json` (skillforge-backend) | PASS — exit 0 |
+| `npm run build` (skillforge-backend) | PASS — exit 0 |
+| `npx jest` (skillforge-backend) | PASS — 1 suite, 1 test (unchanged) |
+| `npx tsc --noEmit -p tsconfig.app.json` (frontend) | only the 2 documented Phase-7 residual errors (`useOptimizedQuery.ts:32,85`); nothing new |
+| `npx tsc --noEmit -p tsconfig.node.json` (frontend) | PASS — exit 0 |
+| `npx vitest run` (frontend) | 2 files / 6 tests failed, 9 passed — identical to Phase 0 baseline (Navbar ThemeProvider, Features text); no regression |
+| `node dist/server.js` boot probes (ephemeral env, DB down) | `GET /api/courses/:id/lessons` → 500 route-level (mounted, was 404-class gap); `PUT /api/users/profile` no token → 401; `GET /api/auth/me` no token → 401 with auth-router message (dual mount serves); `POST /api/auth/login` → route handler; `GET /api/courses` mount unchanged |
+| `git diff --check` | clean (exit 0) |
+| Reviewer (`general` subagent per `.opencode/agents/reviewer.md`) | PASS (first run FAIL caught an untouched `/user` string mapping; fixed, re-verified, second run PASS) |
+
+## Files Changed in Current Phase (Phase 4)
+
+Backend: `skillforge-backend/src/server.ts` (`/api/auth` dual mount +
+doc lines), `src/routes/courses.ts` (instructor objects, `lesson.quiz`
+include, new `GET /:id/lessons`), `src/routes/users.ts` (new `PUT
+/profile`). Frontend: `frontend/Dockerfile` (`VITE_API_URL` value only),
+`src/lib/axios.ts` (`??`), `src/services/lessonService.ts` (`??` + `/api`
+attempt path), `src/contexts/AuthContext.tsx` (relative `/api/auth/*`,
+`getApiUrl` removed), `vite.config.ts` (dev `/api/auth` rewrite). Docs:
+`docs/DECISIONS.md` (ADR-002, D-005 decided), `docs/PROJECT_STATE.md` (this
+file). No `package.json`, schema/migration, nginx-structural, or test
+changes. (`tsconfig.*.tsbuildinfo` churn from typecheck runs reverted,
+uncommitted.)
+
 ## Files Changed in Current Phase (Phase 3)
 
 Modified: `skillforge-backend/src/server.ts` (headers, body limit, `/health`
@@ -297,9 +377,16 @@ Recorded for later phases; do not fix early.
   env-loading vs `config.ts` duplication kept (import-hoisting vs `.env`
   load ordering risk); no transactions on enroll/progress (single writes
   backed by `@@unique` constraints — verified sufficient).
-- Phase 4: `/api/auth/*` contract exists only in frontend `hooks/useAuth.ts`
-  and nginx rewrite; no backend paths; `AuthContext.tsx` PUT `/api/users/profile`
-  has no backend route; dev vs prod proxy behavior differs.
+- Phase 4 (residual, verified 2026-09-23): `/api/auth/*` resolved (ADR-002:
+  dual backend mounts + nginx rewrite kept + Vite dev rewrite; D-005
+  decided); `PUT /api/users/profile` and `GET /api/courses/:id/lessons`
+  implemented; instructor shapes aligned. Remaining by design: query-filter
+  semantics not implemented (new logic, no owning phase — known limitation);
+  model drift (`rating/students/price/tags/duration/resources`) needs schema
+  data (Phase 6/7); `quizzes[]` vs `quiz` (D-006 open → Phase 7); dead
+  `hooks/useAuth.ts`, `services/user.ts`, `hooks/useApi.ts`, unrouted
+  `CourseDetails.tsx` await Phase 7 removal; backend OAuth callback still
+  unproxied by nginx in Docker (Phase 5/10).
 - Phase 5: `GOOGLE_REDIRECT_URI` (server/compose) vs `GOOGLE_CALLBACK_URL`
   (docs/scripts/checkenv.ts); OAuth callback redirect vs nginx SPA catch-all;
   README-referenced `/auth/test-google` and `/auth/debug-page` do not exist.
@@ -349,6 +436,6 @@ production fail-fast on missing `JWT_SECRET`).
 
 ## Next Allowed Action
 
-Phase 3 gate PASSED (reviewer PASS 2026-09-23). STOP. Await explicit
-instruction to begin Phase 4 (API contract consistency). Do not
-start Phase 4 automatically.
+Phase 4 gate PASSED (reviewer PASS 2026-09-23). STOP. Await explicit
+instruction to begin Phase 5 (Authentication and OAuth). Do not
+start Phase 5 automatically.

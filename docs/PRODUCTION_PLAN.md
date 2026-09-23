@@ -113,7 +113,7 @@ PHASE 3 GATE:
 
 ---
 
-## PHASE 4 — API contract consistency
+## PHASE 4 — API contract consistency (COMPLETE)
 
 - Objective: make frontend service calls match backend routes exactly, in dev
   and prod, without inventing endpoints.

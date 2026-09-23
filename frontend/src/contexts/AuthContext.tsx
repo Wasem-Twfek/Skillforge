@@ -1,16 +1,12 @@
 import React, { createContext, useState, useContext, useEffect, ReactNode } from 'react';
 
-// Import API URL from environment
-const API_URL = (import.meta as any).env?.VITE_API_URL || 'http://localhost:3001';
+// Import API URL from environment (nullish keeps a production empty string
+// relative; only undefined/null fall back to dev).
+const API_URL = (import.meta as any).env?.VITE_API_URL ?? 'http://localhost:3001';
 
-// For OAuth redirects, use relative URLs so nginx can proxy correctly
-const getApiUrl = () => {
-  // If we're on the same domain as the frontend, use relative URLs
-  if (window.location.hostname === 'localhost' && window.location.port === '') {
-    return '';
-  }
-  return API_URL;
-};
+// Auth calls use relative /api/auth/* paths so they resolve through the dev
+// proxy and the production nginx rewrite in the same way. Absolute /auth/*
+// URLs bypass both and break behind nginx, so they are not used here.
 
 // User interface
 export interface User {
@@ -93,7 +89,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         }
         
         // Make a real API call to get user profile
-        const response = await fetch(`${getApiUrl()}/auth/me`, {
+        const response = await fetch(`/api/auth/me`, {
           headers: {
             'Authorization': `Bearer ${token}`,
             'Content-Type': 'application/json',
@@ -146,7 +142,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   }, [token]);
 
   const loginWithGoogle = async () => {
-    window.location.href = `${getApiUrl()}/auth/google`;
+    window.location.href = `/api/auth/google`;
   };
 
   const loginWithEmail = async (credentials: LoginCredentials): Promise<boolean> => {
@@ -154,7 +150,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       setIsLoading(true);
       setError(null);
       
-      const response = await fetch(`${API_URL}/auth/login`, {
+      const response = await fetch(`/api/auth/login`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -190,7 +186,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       setIsLoading(true);
       setError(null);
       
-      const response = await fetch(`${API_URL}/auth/register`, {
+      const response = await fetch(`/api/auth/register`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -271,7 +267,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       setIsLoading(true);
       console.log('Fetching user profile with token:', newToken.substring(0, 10) + '...');
       
-      const response = await fetch(`${getApiUrl()}/auth/me`, {
+      const response = await fetch(`/api/auth/me`, {
         headers: {
           Authorization: `Bearer ${newToken}`,
         },

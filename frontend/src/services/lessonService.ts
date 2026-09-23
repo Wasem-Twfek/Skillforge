@@ -1,7 +1,9 @@
 import axios from 'axios';
 import axiosInstance from '../lib/axios';
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001/api';
+// Origin-only base (nullish keeps a production empty string relative);
+// the /api prefix lives on the paths, matching src/lib/axios.ts.
+const API_URL = import.meta.env.VITE_API_URL ?? 'http://localhost:3001';
 
 export interface Lesson {
   id: string;
@@ -46,7 +48,7 @@ const lessonService = {
 
   async submitQuizAttempt(quizId: string, answers: string[], token: string): Promise<QuizAttempt> {
     const response = await axios.post(
-      `${API_URL}/quizzes/${quizId}/attempt`,
+      `${API_URL}/api/quizzes/${quizId}/attempt`,
       { answers },
       {
         headers: {

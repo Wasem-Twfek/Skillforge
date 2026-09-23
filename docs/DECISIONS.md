@@ -39,7 +39,7 @@ stay aligned with the repository.
 | D-002 | OAuth CSRF state strategy (CSPRNG + verified cookie) | 5 | open |
 | D-003 | JWT/token storage strategy if Phase 1 evidence requires change | 1/5 | open |
 | D-004 | Redis: keep declared-but-unused, use it, or remove from compose/docs | 3 | open |
-| D-005 | `/api/auth/*` prefix convention (nginx rewrite vs backend-mounted routes) | 4 | open |
+| D-005 | `/api/auth/*` prefix convention (nginx rewrite vs backend-mounted routes) | 4 | decided (ADR-002) |
 | D-006 | Frontend/backend response-shape alignment for lessons/quizzes | 4/7 | open |
 | D-007 | Dependency major-upgrade policy (vite/vitest/prisma/express majors) | 11 | open |
 | D-008 | Seed idempotency approach (upsert pattern exists for instructor) | 6 | open |
@@ -65,6 +65,25 @@ Evidence: `skillforge-backend/src/server.ts`, `docker-compose.yml`,
 `.gitignore`, `.env.example`, `skillforge-backend/.env.example`,
 `docs/PROJECT_STATE.md` Phase 1 verification (tracked secret-kind scans clean;
 reviewer PASS).
+
+## ADR-002 (2026-09-23) — `/api/auth/*` is the canonical frontend-facing auth prefix
+Status: Accepted
+Context: Phase 4 proved the frontend calls auth exclusively as `/api/auth/*`
+(`AuthContext.tsx`, `hooks/useAuth.ts`, `Signup.tsx`) while the backend
+mounted only `/auth`, relying on the nginx `/api/auth/*` → `/auth/*` rewrite
+in production. That left development (Vite proxy has no rewrite) and any
+direct-backend access serving 404 for the same paths the frontend calls.
+Decision: The backend serves the existing auth router under both `/auth` and
+`/api/auth` (`skillforge-backend/src/server.ts`); the nginx rewrite is kept
+for compatibility; the Vite dev proxy rewrites `^/api/auth/` → `/auth/`
+(`frontend/vite.config.ts`), mirroring nginx. Frontend auth calls use relative
+`/api/auth/*` paths. No route logic differs between the mounts.
+Consequences: Auth paths resolve identically in dev, prod, and direct-backend
+access; D-005 closed. OAuth/CSRF mechanics unchanged (Phase 5).
+Evidence: `skillforge-backend/src/server.ts` dual mount, `nginx.conf`
+rewrite block, `frontend/vite.config.ts` proxy rewrite,
+`frontend/src/contexts/AuthContext.tsx` relative paths, Phase 4 boot probes
+(`GET /api/auth/me` → auth-router 401, `POST /api/auth/login` → handler).
 
 When a decision is made, append an entry:
 

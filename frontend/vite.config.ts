@@ -128,7 +128,10 @@ export default defineConfig({
       '/api': {
         target: process.env.VITE_API_URL || 'http://localhost:3001',
         changeOrigin: true,
-        secure: false
+        secure: false,
+        // Mirror the production nginx rewrite (/api/auth/* -> /auth/*) so the
+        // canonical frontend-facing auth prefix resolves the same way in dev.
+        rewrite: (path) => path.replace(/^\/api\/auth\//, '/auth/')
       },
       '/auth': {
         target: process.env.VITE_API_URL || 'http://localhost:3001',

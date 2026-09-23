@@ -22,8 +22,10 @@ RUN npm ci --force
 # Copy frontend source code
 COPY frontend/ ./
 
-# Create a .env file for the build
-RUN echo "VITE_API_URL=/api" > .env
+# Relative (origin-only) API base. Service paths already carry the /api prefix
+# (see frontend/src/lib/axios.ts), so baking /api here would produce
+# /api/api/* in production. Empty keeps requests relative for nginx to proxy.
+RUN echo "VITE_API_URL=" > .env
 
 # Generate PWA icon placeholders (faster than using Sharp)
 WORKDIR /app/frontend

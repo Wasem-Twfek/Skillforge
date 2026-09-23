@@ -101,12 +101,14 @@ app.get('/', (req, res) => {
         list: 'GET /api/courses - Get all courses',
         user: 'GET /api/courses/user - Get user\'s enrolled courses (requires authentication)',
         detail: 'GET /api/courses/:id - Get course details',
+        courseLessons: 'GET /api/courses/:id/lessons - Get all lessons for a course',
         enroll: 'POST /api/courses/:id/enroll - Enroll in a course (requires authentication)',
         progress: 'POST /api/courses/:id/progress - Update course progress (requires authentication)'
       },
       users: {
         base: 'GET /api/users - Get all users (requires authentication)',
-        profile: 'GET /api/users/:id - Get user profile (requires authentication)'
+        profile: 'GET /api/users/:id - Get user profile (requires authentication)',
+        updateProfile: 'PUT /api/users/profile - Update own profile (requires authentication)'
       },
       lessons: {
         list: 'GET /api/lessons - Get all lessons (requires authentication)',
@@ -125,6 +127,11 @@ app.get('/', (req, res) => {
 // Routes
 app.use('/health', healthRoutes);
 app.use('/auth', authRoutes);
+// Serve the same auth router under the /api/auth prefix: /api/auth/* is the
+// canonical frontend-facing auth prefix (nginx rewrites it to /auth/* in
+// production), so the backend accepts it directly in every environment
+// (ADR-002). No route logic differs between the two mounts.
+app.use('/api/auth', authRoutes);
 
 // Public routes
 app.use('/api/courses', courseRoutes);

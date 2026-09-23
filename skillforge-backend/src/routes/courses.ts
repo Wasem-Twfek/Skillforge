@@ -14,6 +14,8 @@ router.get('/', async (req, res) => {
           select: {
             id: true,
             name: true,
+            avatar: true,
+            bio: true,
           },
         },
         lessons: true,
@@ -26,7 +28,12 @@ router.get('/', async (req, res) => {
         title: course.title,
         description: course.description,
         thumbnail: course.thumbnail,
-        instructor: course.instructor.name,
+        instructor: {
+          id: course.instructor.id,
+          name: course.instructor.name,
+          avatar: course.instructor.avatar,
+          bio: course.instructor.bio,
+        },
         category: course.category,
         level: course.level,
         lessons: course.lessons,
@@ -60,6 +67,8 @@ router.get('/user', authenticate, async (req: Request, res) => {
               select: {
                 id: true,
                 name: true,
+                avatar: true,
+                bio: true,
               },
             },
             lessons: true,
@@ -79,7 +88,12 @@ router.get('/user', authenticate, async (req: Request, res) => {
         title: enrollment.course.title,
         description: enrollment.course.description,
         thumbnail: enrollment.course.thumbnail,
-        instructor: enrollment.course.instructor.name,
+        instructor: {
+          id: enrollment.course.instructor.id,
+          name: enrollment.course.instructor.name,
+          avatar: enrollment.course.instructor.avatar,
+          bio: enrollment.course.instructor.bio,
+        },
         progress: Math.round(progress),
         enrolledAt: enrollment.enrolledAt,
         category: enrollment.course.category,
@@ -94,6 +108,19 @@ router.get('/user', authenticate, async (req: Request, res) => {
   }
 });
 
+// Get all lessons for a course (used by the course detail UI)
+router.get('/:id/lessons', async (req, res) => {
+  try {
+    const lessons = await prisma.lesson.findMany({
+      where: { courseId: req.params.id },
+    });
+    res.json(lessons);
+  } catch (error) {
+    console.error('Error fetching course lessons:', error instanceof Error ? error.message : 'unknown error');
+    res.status(500).json({ error: 'Failed to fetch course lessons' });
+  }
+});
+
 // Get course by ID
 router.get('/:id', async (req, res) => {
   try {
@@ -104,9 +131,15 @@ router.get('/:id', async (req, res) => {
           select: {
             id: true,
             name: true,
+            avatar: true,
+            bio: true,
           },
         },
-        lessons: true,
+        lessons: {
+          include: {
+            quiz: true,
+          },
+        },
       },
     });
     if (!course) {
