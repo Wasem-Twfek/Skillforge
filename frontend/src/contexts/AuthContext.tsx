@@ -78,7 +78,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     
     const checkAuth = async () => {
       if (!token) {
-        console.log('AuthContext: No token found, setting user to null');
+
         if (isMounted) {
           setUser(null);
         }
@@ -86,7 +86,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       }
 
       try {
-        console.log('AuthContext: Checking auth with token:', token?.substring(0, 10) + '...');
+
         if (isMounted) {
           setIsLoading(true);
         }
@@ -99,9 +99,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
           },
           credentials: 'include',
         });
-        
-        console.log('AuthContext: Response status:', response.status);
-        
+
         if (!response.ok) {
           const errorText = await response.text();
           console.error('AuthContext: Auth check failed with status:', response.status, 'Response:', errorText);
@@ -109,8 +107,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         }
         
         const userData = await response.json();
-        console.log('AuthContext: User data received:', userData);
-        
+
         // Ensure we have valid user data
         if (!userData || !userData.id) {
           console.error('AuthContext: Invalid user data received:', userData);
@@ -119,7 +116,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         
         if (isMounted) {
           setUser(userData);
-          console.log('AuthContext: User authenticated successfully');
+
         }
       } catch (err) {
         console.error('AuthContext: Auth check failed:', err);
@@ -136,7 +133,6 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       }
     };
 
-    console.log('AuthContext: Token changed, checking auth...');
     checkAuth();
     
     return () => {
@@ -221,7 +217,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   };
 
   const logout = () => {
-    console.log('Logging out user');
+
     localStorage.removeItem('token');
     setToken(null);
     setUser(null);
@@ -268,8 +264,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const fetchUserProfile = async (newToken: string): Promise<boolean> => {
     try {
       setIsLoading(true);
-      console.log('Fetching user profile with token:', newToken.substring(0, 10) + '...');
-      
+
       const response = await fetch(`/api/auth/me`, {
         headers: {
           Authorization: `Bearer ${newToken}`,
@@ -283,8 +278,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       }
       
       const userData = await response.json();
-      console.log('User data received:', userData);
-      
+
       // Ensure we have valid user data
       if (!userData || !userData.id) {
         console.error('Invalid user data received:', userData);
