@@ -4,14 +4,14 @@ function optional(value: string | undefined): string {
   return value ?? '';
 }
 
-function requiredInProduction(name: string, value: string): string {
-  if (!value && process.env.NODE_ENV === 'production') {
-    throw new Error(`Missing required environment variable ${name} in production`);
+function requiredOutsideTests(name: string, value: string | undefined): string {
+  if (!value && process.env.NODE_ENV !== 'test') {
+    throw new Error(`Missing required environment variable ${name}`);
   }
-  return value;
+  return value ?? '';
 }
 
-const JWT_SECRET = requiredInProduction('JWT_SECRET', process.env.JWT_SECRET);
+const JWT_SECRET = requiredOutsideTests('JWT_SECRET', process.env.JWT_SECRET);
 
 export const config = {
   PORT: process.env.PORT || '3001',
