@@ -5,7 +5,7 @@ import { toPublicQuestions } from '../lib/quiz';
 
 const router = express.Router();
 
-router.get('/', authenticate, async (_req, res) => {
+router.get('/', async (_req, res) => {
   try {
     const lessons = await prisma.lesson.findMany();
     res.json(lessons);
