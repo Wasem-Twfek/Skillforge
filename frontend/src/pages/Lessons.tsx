@@ -2,7 +2,6 @@ import { useQuery } from '@tanstack/react-query';
 import lessonService, { Lesson } from '../services/lessonService';
 import LessonCard from '../components/LessonCard';
 
-// Keep a consistent difficulty label until the API provides this field.
 const getDifficultyForTitle = (title: string): 'beginner' | 'intermediate' | 'advanced' => {
   const lowerTitle = title.toLowerCase();
   if (lowerTitle.includes('introduction') || lowerTitle.includes('basics')) {
@@ -13,7 +12,6 @@ const getDifficultyForTitle = (title: string): 'beginner' | 'intermediate' | 'ad
   return 'intermediate';
 };
 
-// Keep a consistent duration label until the API provides this field.
 const getDurationForTitle = (title: string): number => {
   const lowerTitle = title.toLowerCase();
   if (lowerTitle.includes('introduction')) {

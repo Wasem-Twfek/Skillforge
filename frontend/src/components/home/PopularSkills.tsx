@@ -123,22 +123,16 @@ const SkillCard = ({ course }: { course: Course }) => {
         />
         <div className="absolute top-3 left-3 bg-white dark:bg-gray-800 px-2 py-1 rounded-lg text-xs font-medium text-gray-800 dark:text-gray-200">
           {course.level}
-        </div>
-        <div className="absolute top-3 right-3 bg-white dark:bg-gray-800 px-2 py-1 rounded-lg text-xs font-medium flex items-center">
-          <span className="text-yellow-500 mr-1">★</span> {course.rating}
-        </div>
-      </div>
+        </div></div>
       
-      <div className="p-5">
-        <div className="flex items-center space-x-2 mb-2">
-          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-primary-100 dark:bg-primary-900/30 text-primary-800 dark:text-primary-300">
+      <div className="p-5"><div className="flex items-center space-x-2 mb-2">
+<span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-primary-100 dark:bg-primary-900/30 text-primary-800 dark:text-primary-300">
             {course.category}
           </span>
           <span className="text-sm text-gray-500 dark:text-gray-400">{course.lessons.length} lessons</span>
         </div>
         
         <h3 className="font-bold text-lg mb-1 text-gray-900 dark:text-white line-clamp-1">{course.title}</h3>
-        
         <div className="flex items-center mt-4">
           <img
             src={course.instructor.avatar ?? undefined}
@@ -148,15 +142,8 @@ const SkillCard = ({ course }: { course: Course }) => {
               e.currentTarget.src = `https://placehold.co/100/4338ca/ffffff?text=${course.instructor.name.charAt(0)}`;
             }}
           />
-          <div className="text-sm">
-            <span className="text-gray-900 dark:text-white font-medium">{course.instructor.name}</span>
-            <div className="flex items-center text-gray-500 dark:text-gray-400">
-              <span>{(course.students ?? 0).toLocaleString()} students</span>
-            </div>
-          </div>
         </div>
-      </div>
-    </Link>
+      </Link>
   );
 };
 
