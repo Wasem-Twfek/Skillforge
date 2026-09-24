@@ -123,7 +123,13 @@ router.get('/:id/lessons', async (req, res) => {
     const lessons = await prisma.lesson.findMany({
       where: { courseId: req.params.id },
       orderBy: { order: 'asc' },
-      include: { quiz: true },
+      include: {
+        quiz: {
+          select: {
+            id: true,
+          },
+        },
+      },
     });
 
     res.json(lessons);
