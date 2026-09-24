@@ -1,9 +1,9 @@
 # PROJECT_STATE.md — SkillForge Persistent State
 
 CURRENT_PHASE: 7 (Frontend correctness and integration)
-CURRENT_STATUS: PHASE 7 COMPLETE — reviewer PASS; STOP, do not start Phase 8 without explicit instruction
+CURRENT_STATUS: PHASE 7 COMPLETE (static + runtime recovery) — reviewer PASS; STOP, do not start Phase 8 without explicit instruction
 LAST_VERIFIED: 2026-09-24
-LAST_COMMIT: (Phase 7 closure commit) "Fix frontend integration and type errors"
+LAST_COMMIT: (Phase 7 runtime-recovery commit) "Fix frontend runtime API routing"
 
 ---
 
@@ -148,8 +148,55 @@ that was connected to nothing. Then STOP and await approval for Phase 8.
 | `npm run build` (skillforge-backend) | PASS — exit 0 (unchanged) |
 | `npx jest` (skillforge-backend) | PASS — 2 suites, 13 tests (unchanged) |
 | `git diff --check` | clean (exit 0) |
-| Browser runtime flows | NOT EXECUTED — no browser harness in this environment (`vite preview` smoke could not establish a connection); STATIC VERIFIED via build + typecheck + lint. DB-backed flows additionally limited per Phase 6 (no PostgreSQL). |
+| Browser runtime flows | RECOVERY EXECUTED 2026-09-24 (see PHASE 7 RUNTIME RECOVERY below): headless-Chrome console + DOM evidence on `/` and `/courses`; CORS root cause found and fixed; anonymous `/courses` flow now reaches backend via proxy (401 → `/login`). Authenticated/DB-backed flows still limited (no PostgreSQL). |
 | Reviewer (`general` subagent per `.opencode/agents/reviewer.md`) | PASS (tsc app+node/eslint re-run; deletions grep-verified; scope/secrets re-verified) |
+
+## PHASE 7 RUNTIME RECOVERY (2026-09-24)
+
+Honest correction: Phase 7 was first marked COMPLETE on static verification
+only (browser runtime was NOT EXECUTED). A real browser pass has now been run
+and is recorded here.
+
+- Original runtime symptom: the site starts (home page renders, React mounts)
+  but data-backed screens never load when the frontend origin is anything
+  other than exactly `http://localhost:3000` — the app sits on empty states
+  with console CORS errors.
+- Reproduction evidence (headless Chrome, backend `node dist/server.js` :3001
+  + `vite --host 127.0.0.1` :3000, origin `http://127.0.0.1:3000/courses`):
+  console showed `Access to XMLHttpRequest at
+  'http://localhost:3001/api/lessons' from origin 'http://127.0.0.1:3000' has
+  been blocked by CORS policy` (twice: initial + retry); DOM showed the
+  `No Lessons Found` empty state. No secrets/tokens recorded.
+- Root cause: `axiosInstance` (`src/lib/axios.ts`) and the `API_URL` const in
+  `src/contexts/AuthContext.tsx` fell back to absolute
+  `http://localhost:3001` when `VITE_API_URL` is unset, bypassing the Vite
+  dev proxy; the backend CORS allow-list (`src/server.ts`, default
+  `FRONTEND_URL=http://localhost:3000`) rejects any other origin. Auth calls
+  kept working because they use relative `/api/auth/*` (proxied) — hence
+  "starts but data doesn't work". Backend CORS verified correct-as-is
+  (Phase 3) and left untouched.
+- Fix (frontend only, 3 files): dev fallback `?? 'http://localhost:3001'` →
+  `?? ''` in `src/lib/axios.ts` and `src/contexts/AuthContext.tsx`, so all
+  API traffic stays same-origin through the dev proxy (identical to
+  production behind nginx, where `VITE_API_URL` is already empty); comment +
+  `ImportMetaEnv` doc updated in `src/vite-env.d.ts`. No invented default:
+  `''` is proxy routing, not a data fallback. Explicit absolute
+  `VITE_API_URL` values are still honored when set.
+- BEFORE vs AFTER (same origin, same servers): BEFORE — CORS errors, lessons
+  request never reaches backend, stuck empty state. AFTER — zero CORS
+  mentions; request reaches backend via proxy (401 without token) and the
+  existing 401 interceptor navigates to `/login` (console `Route change to
+  /login`, DOM shows the login form). Exact failing flow (anonymous
+  `/courses` data fetch) now completes its real end-to-end path.
+- Verification: `tsc` app+node exit 0, `eslint .` exit 0 (0 errors, same 3
+  warnings), `npm run build` exit 0, `vitest` unchanged at baseline 2/6/9,
+  backend untouched (tsc/build/jest as recorded), reviewer PASS, `git
+  diff --check` clean.
+- Remaining runtime issues: authenticated and all DB-backed flows cannot be
+  exercised here (no PostgreSQL — 500s are environmental, Phase 10/12);
+  `/forgot-password`, `/terms`, `/privacy`, `/learning-paths` dead links and
+  unrouted `Lessons.tsx` stay deferred as recorded; Phase 7 is now genuinely
+  closed on both static and available-runtime evidence.
 
 ## Verified Commands (Phase 6, actual output)
 
