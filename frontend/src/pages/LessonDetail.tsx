@@ -1,13 +1,20 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import lessonService from '../services/lessonService';
 import { useAuth } from '../contexts/AuthContext';
+import { useUserCourses } from '../hooks/useCourses';
+import { courseService } from '../services/courseService';
 import Quiz from '../components/quiz/Quiz';
 
 const LessonDetail: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const { token } = useAuth();
+
+  const queryClient = useQueryClient();
+  const [isCompleting, setIsCompleting] = useState(false);
+  const [isCompleted, setIsCompleted] = useState(false);
+  const [progressError, setProgressError] = useState<string | null>(null);
 
   const { data: lesson, isLoading, error } = useQuery({
     queryKey: ['lesson', id],
@@ -15,6 +22,34 @@ const LessonDetail: React.FC = () => {
     enabled: Boolean(id && token),
     retry: false,
   });
+
+  const { data: userCourses } = useUserCourses();
+  const isEnrolled = Boolean(
+    lesson && userCourses?.some((course) => course.id === lesson.courseId),
+  );
+
+  const handleComplete = async () => {
+    if (!lesson || !isEnrolled || isCompleting || isCompleted) {
+      return;
+    }
+
+    setIsCompleting(true);
+    setProgressError(null);
+
+    try {
+      await courseService.updateProgress(lesson.courseId, lesson.id, true);
+      setIsCompleted(true);
+      await queryClient.invalidateQueries({ queryKey: ['userCourses'] });
+    } catch (err: unknown) {
+      setProgressError(
+        err instanceof Error
+          ? err.message
+          : 'Failed to update lesson progress.',
+      );
+    } finally {
+      setIsCompleting(false);
+    }
+  };
 
   if (!token) {
     return (
@@ -84,8 +119,44 @@ const LessonDetail: React.FC = () => {
           />
         )}
 
-        <div className="prose max-w-none dark:prose-invert whitespace-pre-wrap">
+        <div className="prose max-w-none whitespace-pre-wrap dark:prose-invert">
           {lesson.content}
+        </div>
+
+        <div className="mt-8 rounded-lg border border-gray-200 p-4 dark:border-gray-700">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <h2 className="font-semibold text-gray-900 dark:text-white">
+                Lesson progress
+              </h2>
+              <p className="text-sm text-gray-500 dark:text-gray-400">
+                {!isEnrolled
+                  ? 'Enroll in this course to track your progress.'
+                  : isCompleted
+                    ? 'This lesson is marked as complete.'
+                    : 'Mark this lesson as complete when you finish it.'}
+              </p>
+            </div>
+
+            <button
+              type="button"
+              onClick={() => void handleComplete()}
+              disabled={!isEnrolled || isCompleting || isCompleted}
+              className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              {isCompleted
+                ? 'Completed'
+                : isCompleting
+                  ? 'Saving...'
+                  : 'Mark complete'}
+            </button>
+          </div>
+
+          {progressError && (
+            <p className="mt-3 text-sm text-red-600 dark:text-red-400">
+              {progressError}
+            </p>
+          )}
         </div>
 
         {lesson.quiz && (
