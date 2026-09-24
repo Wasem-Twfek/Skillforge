@@ -22,6 +22,4 @@ const prisma = global.prisma || new PrismaClient({
 // Save prisma client to global in development to prevent multiple instances
 if (process.env.NODE_ENV !== 'production') global.prisma = prisma;
 
-console.log('Prisma initialized with database connection');
-
 export default prisma;
