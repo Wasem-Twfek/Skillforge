@@ -1,16 +1,5 @@
 import React, { createContext, useState, useContext, useEffect, ReactNode } from 'react';
 
-// Import API URL from environment (nullish keeps a production empty string
-// relative; only undefined/null fall back to dev). The fallback is relative
-// so profile updates stay same-origin through the dev proxy, matching every
-// other API call (an absolute fallback would bypass the proxy and fail CORS
-// on non-default origins).
-const API_URL = import.meta.env?.VITE_API_URL ?? '';
-
-// Auth calls use relative /api/auth/* paths so they resolve through the dev
-// proxy and the production nginx rewrite in the same way. Absolute /auth/*
-// URLs bypass both and break behind nginx, so they are not used here.
-
 // User interface
 export interface User {
   id: string;
