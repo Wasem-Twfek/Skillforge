@@ -1,9 +1,8 @@
-// Central backend configuration, backed exclusively by the environment.
-// No hardcoded secrets or credential fallbacks (see ADR-001). Non-secret
-// defaults below mirror `src/server.ts`. Secrets/credentials default to an
-// empty string (feature disabled / must be configured); production refuses to
-// boot without `JWT_SECRET` (fail fast, same rule as `src/server.ts`).
-// Nothing here logs values — presence logging lives with the callers.
+import 'dotenv/config';
+
+function optional(value: string | undefined): string {
+  return value ?? '';
+}
 
 function requiredInProduction(name: string, value: string): string {
   if (!value && process.env.NODE_ENV === 'production') {
@@ -12,17 +11,20 @@ function requiredInProduction(name: string, value: string): string {
   return value;
 }
 
-const JWT_SECRET = requiredInProduction('JWT_SECRET', process.env.JWT_SECRET || '');
+const JWT_SECRET = requiredInProduction('JWT_SECRET', process.env.JWT_SECRET);
 
 export const config = {
   PORT: process.env.PORT || '3001',
   NODE_ENV: process.env.NODE_ENV || 'development',
   FRONTEND_URL: process.env.FRONTEND_URL || 'http://localhost:3000',
   JWT_SECRET,
-  DATABASE_URL: process.env.DATABASE_URL || '',
-  GOOGLE_CLIENT_ID: process.env.GOOGLE_CLIENT_ID || '',
-  GOOGLE_CLIENT_SECRET: process.env.GOOGLE_CLIENT_SECRET || '',
-  GOOGLE_REDIRECT_URI: process.env.GOOGLE_REDIRECT_URI || '',
+  DATABASE_URL: optional(process.env.DATABASE_URL),
+  REDIS_URL: optional(process.env.REDIS_URL),
+  GOOGLE_CLIENT_ID: optional(process.env.GOOGLE_CLIENT_ID),
+  GOOGLE_CLIENT_SECRET: optional(process.env.GOOGLE_CLIENT_SECRET),
+  GOOGLE_REDIRECT_URI:
+    process.env.GOOGLE_REDIRECT_URI ||
+    'http://localhost:3001/auth/google/callback',
 };
 
 export type AppConfig = typeof config;
