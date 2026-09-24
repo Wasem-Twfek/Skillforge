@@ -84,6 +84,44 @@ async function main() {
     ]);
   }
 
+  const javascriptLesson = await prisma.lesson.findFirst({
+    where: {
+      courseId: course.id,
+      title: 'JavaScript Introduction',
+    },
+    select: { id: true },
+  });
+
+  if (javascriptLesson) {
+    await prisma.quiz.upsert({
+      where: { lessonId: javascriptLesson.id },
+      update: {},
+      create: {
+        title: 'JavaScript Basics',
+        lessonId: javascriptLesson.id,
+        questions: [
+          {
+            id: 'js-q1',
+            question: 'What is JavaScript?',
+            options: [
+              'A markup language',
+              'A programming language',
+              'A styling language',
+              'A database language',
+            ],
+            correctAnswer: 1,
+          },
+          {
+            id: 'js-q2',
+            question: 'Which keyword declares a block-scoped variable?',
+            options: ['var', 'let', 'function', 'class'],
+            correctAnswer: 1,
+          },
+        ],
+      },
+    });
+  }
+
   console.log('Seed data created successfully');
 }
 
