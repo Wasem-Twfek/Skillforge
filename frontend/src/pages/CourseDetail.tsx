@@ -2,13 +2,10 @@ import React, { useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useCourse, useLessonsByCourse } from '../hooks/useCourses';
 import { courseService } from '../services/courseService';
-import Quiz from '../components/quiz/Quiz';
 
 const CourseDetail: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const [selectedLesson, setSelectedLesson] = useState<string | null>(null);
-  const [showQuiz, setShowQuiz] = useState(false);
   const [isEnrolling, setIsEnrolling] = useState(false);
   const [isEnrolled, setIsEnrolled] = useState(false);
   const [enrollError, setEnrollError] = useState<string | null>(null);
@@ -62,22 +59,20 @@ const CourseDetail: React.FC = () => {
           ? (err as { response?: { status?: number; data?: { error?: string } } }).response
           : undefined;
 
-      if (response?.status === 400 && response.data?.error === 'Already enrolled in this course') {
+      if (
+        response?.status === 400 &&
+        response.data?.error === 'Already enrolled in this course'
+      ) {
         setIsEnrolled(true);
       } else {
-        setEnrollError(response?.data?.error || 'Failed to enroll. Please try again.');
+        setEnrollError(
+          response?.data?.error || 'Failed to enroll. Please try again.',
+        );
       }
     } finally {
       setIsEnrolling(false);
     }
   };
-
-  const handleLessonSelect = (lessonId: string, hasQuiz: boolean) => {
-    setSelectedLesson(lessonId);
-    setShowQuiz(hasQuiz);
-  };
-
-  const selectedQuiz = lessons?.find((lesson) => lesson.id === selectedLesson)?.quiz;
 
   return (
     <div className="container mx-auto px-4 py-8">
@@ -111,40 +106,44 @@ const CourseDetail: React.FC = () => {
             <p>{course.description}</p>
           </div>
 
-          {showQuiz && selectedQuiz ? (
-            <Quiz
-              quizId={selectedQuiz.id || ''}
-              questions={selectedQuiz.questions}
-            />
-          ) : (
-            <section>
-              <h2 className="mb-4 text-2xl font-bold">Course Content</h2>
+          <section>
+            <h2 className="mb-4 text-2xl font-bold">Course Content</h2>
+
+            {lessons && lessons.length > 0 ? (
               <div className="space-y-4">
-                {lessons?.map((lesson) => (
+                {lessons.map((lesson, index) => (
                   <button
                     key={lesson.id}
                     type="button"
-                    onClick={() => handleLessonSelect(lesson.id, Boolean(lesson.quiz))}
+                    onClick={() => navigate('/lessons/' + lesson.id)}
                     className="block w-full rounded-lg border p-4 text-left transition hover:bg-gray-50 dark:hover:bg-gray-800"
                   >
                     <div className="flex items-center justify-between gap-4">
                       <div>
+                        <div className="mb-1 text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">
+                          Lesson {index + 1}
+                        </div>
                         <h3 className="font-medium">{lesson.title}</h3>
                         <p className="text-sm text-gray-500 dark:text-gray-400">
                           {lesson.description}
                         </p>
                       </div>
-                      {lesson.duration !== undefined && (
-                        <span className="shrink-0 text-sm text-gray-500 dark:text-gray-400">
-                          {lesson.duration} min
+
+                      {lesson.quiz && (
+                        <span className="shrink-0 rounded-full bg-blue-50 px-3 py-1 text-xs font-medium text-blue-700 dark:bg-blue-900/30 dark:text-blue-300">
+                          Quiz
                         </span>
                       )}
                     </div>
                   </button>
                 ))}
               </div>
-            </section>
-          )}
+            ) : (
+              <p className="rounded-lg border border-dashed p-6 text-center text-gray-500 dark:border-gray-700 dark:text-gray-400">
+                No lessons are available for this course yet.
+              </p>
+            )}
+          </section>
         </main>
 
         <aside>
