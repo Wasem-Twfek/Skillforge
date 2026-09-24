@@ -247,7 +247,7 @@ PHASE 8 GATE:
 
 ---
 
-## PHASE 9 — Testing
+## PHASE 9 — Testing (COMPLETE 2026-09-24, reviewer PASS)
 
 - Objective: repair broken/outdated tests so they reflect current components;
   give backend `auth.test.ts` real assertions against existing code; set

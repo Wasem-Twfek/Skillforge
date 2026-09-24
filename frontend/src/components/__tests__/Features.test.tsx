@@ -14,7 +14,7 @@ describe('Features', () => {
 
   it('renders the subheading', () => {
     renderFeatures();
-    expect(screen.getByText("Experience learning that's engaging, effective, and enjoyable.")).toBeInTheDocument();
+    expect(screen.getByText("Learn at your own pace with SkillForge's flexible courses and hands-on projects.")).toBeInTheDocument();
   });
 
   it('renders all feature cards', () => {

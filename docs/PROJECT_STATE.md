@@ -1,9 +1,9 @@
 # PROJECT_STATE.md — SkillForge Persistent State
 
-CURRENT_PHASE: 8 (PWA)
-CURRENT_STATUS: PHASE 8 COMPLETE — reviewer PASS; STOP, do not start Phase 9 without explicit instruction
+CURRENT_PHASE: 9 (Testing)
+CURRENT_STATUS: PHASE 9 COMPLETE — reviewer PASS; STOP, do not start Phase 10 without explicit instruction
 LAST_VERIFIED: 2026-09-24
-LAST_COMMIT: (Phase 8 commit) "Fix PWA configuration and service worker"
+LAST_COMMIT: (Phase 9 commit) "Stabilize automated test suite"
 
 ---
 
@@ -127,6 +127,78 @@ that was connected to nothing. Then STOP and await approval for Phase 8.
   claim made.
 - `git diff --check` clean. No backend, auth, API, schema, Docker, nginx,
   test, or dependency changes.
+
+## Completed Work (Phase 9)
+
+- Test inventory (re-run, not assumed): frontend 3 files / 6 failed / 9 passed
+  (Navbar 5x `useTheme must be used within a ThemeProvider`, Features 1x stale
+  subheading; Hero 4 passed); backend 2 suites / 13 passed including the
+  zero-assertion `auth.test.ts` placeholder. Failures matched the historical
+  baseline, plus one newly surfaced file (`Hero.test.tsx`, passing).
+- Failure diagnosis per test (anti-hallucination rule):
+  - Navbar 5x → E (environment/setup): rendered without `ThemeProvider` while
+    `Navbar.tsx` mounts `ThemeToggle` → `useTheme()` throws; plus B/C (stale
+    expectations for `Profile`/`Logout`-as-links and an `AuthContext` mock
+    missing the real `AuthContextType` shape). Real behavior: authenticated
+    shows first-name button with `Dashboard`/`Profile`/`Logout` inside the
+    dropdown; unauthenticated shows a single `Login` button.
+  - Navbar follow-on → E: wrapping in the real `ThemeProvider` exposed
+    `window.matchMedia is not a function` (jsdom has no `matchMedia`).
+  - Features 1x → B (stale): expected `Experience learning that's engaging…`,
+    real subheading is `Learn at your own pace…` (`Features.tsx`).
+  - `auth.test.ts` → H (genuinely invalid): only assertions commented out.
+  - Jest 70% global coverage thresholds → verified unachievable (6.02%
+    statements before Phase 9).
+- Fixes (all in Phase 9 Allowed list; zero production `src` changes):
+  - `Navbar.test.tsx` rewritten: real `ThemeProvider` wrapper, full-shape
+    `AuthContext` mock, expectations matching the real dropdown/mobile-menu
+    behavior, `localStorage` cleared per test.
+  - `Features.test.tsx`: one-line stale subheading correction.
+  - `src/test/setup.ts` (frontend): `window.matchMedia` mock mirroring the
+    existing `IntersectionObserver` mock pattern.
+  - `auth.test.ts` rewritten: 7 real `authenticate`-middleware assertions
+    (missing token, wrong scheme, malformed, invalid signature, expired,
+    valid-but-user-gone, valid → `req.user` + `next()`), safe test secret,
+    no token values printed.
+  - New `src/routes/__tests__/progress.test.ts`: NaN-guard regression through
+    the real `coursesRouter` over HTTP (zero lessons → `progress: 0`, not
+    NaN/null; 2/3 → 67; unenrolled → 404). Auth gate stubbed; all progress
+    math runs in the real handler.
+  - New `frontend/src/services/__tests__/apiContract.test.ts`: 7 contract
+    assertions (relative `baseURL=''`, 5 route paths/payloads, progress
+    non-NaN, singular `quiz` with no `quizzes` key).
+  - `jest.config.js`: 70% globals → truthful floors (15 stmts / 18 branches /
+    10 funcs / 14 lines) just below measured (16.0 / 20.2 / 12.3 / 15.8).
+- Final: frontend 4 files / 22 passed; backend 3 suites / 22 passed
+  (12 oauthState untouched + 7 auth + 3 progress). Both suites re-run twice
+  with identical results (deterministic). `git diff --check` clean. No fake
+  tests, no suppressed failures, no disabled assertions. Reviewer PASS.
+- Test environment requirements: frontend needs jsdom + the two `setup.ts`
+  mocks (`IntersectionObserver`, `matchMedia`); backend needs the safe
+  `JWT_SECRET=test-secret` from `src/test/setup.ts` only — no PostgreSQL, no
+  Redis, no browser, no live credentials. Frontend coverage unrunnable here
+  (`@vitest/coverage-v8` not installed; installing it is a Phase 11
+  dependency decision — NOT installed). Valid-token DB-accept and live
+  OAuth exchange still NOT EXECUTED (no PostgreSQL/provider credentials).
+
+## Verified Commands (Phase 9, actual output)
+
+| Command (workdir) | Result |
+|---|---|
+| `npx vitest run` (frontend, 1st run) | PASS — 4 files / 22 tests (was 3 files / 6 failed / 9 passed) |
+| `npx vitest run` (frontend, 2nd run) | PASS — identical 4 files / 22 tests (deterministic) |
+| `npx jest` (skillforge-backend, 1st run) | PASS — 3 suites, 22 tests (was 2 suites, 13 tests incl. placeholder) |
+| `npx jest` (skillforge-backend, 2nd run) | PASS — identical 3 suites / 22 tests (deterministic) |
+| `npx jest --coverage` (skillforge-backend) | PASS — exit 0; 16.0 stmts / 20.2 branches / 12.3 funcs / 15.8 lines vs truthful floors 15/18/10/14; middleware/auth 100% stmts, oauthState 93.5% |
+| `npm run test:coverage` (frontend) | NOT RUNNABLE — `MISSING DEP '@vitest/coverage-v8'` (provider never installed; installing it is a Phase 11 dependency decision) |
+| `npx tsc --noEmit -p tsconfig.app.json` (frontend) | PASS — exit 0 (unchanged) |
+| `npx tsc --noEmit -p tsconfig.node.json` (frontend) | PASS — exit 0 (unchanged) |
+| `npx eslint .` (frontend) | PASS — exit 0, 0 errors, same 3 react-refresh warnings as Phase 7/8 |
+| `npm run build` (frontend) | PASS — exit 0, precache 34 entries (632.06 KiB), no glob warning (unchanged vs Phase 8) |
+| `npx tsc --noEmit -p tsconfig.json` (skillforge-backend) | PASS — exit 0 (unchanged) |
+| `npm run build` (skillforge-backend) | PASS — exit 0 (unchanged) |
+| `git diff --check` | clean (exit 0) |
+| Reviewer (`general` subagent per `.opencode/agents/reviewer.md`) | PASS (vitest/jest/coverage/tsc/eslint re-run; no-prod-diff + scope/secrets re-verified) |
 
 ## Verified Commands (Phase 8, actual output)
 
@@ -630,6 +702,22 @@ Recorded but not re-run in this session (same environment, prior evidence):
 | `git diff --check` | clean (exit 0) |
 | Reviewer (`general` subagent per `.opencode/agents/reviewer.md`) | PASS (first run FAIL caught an untouched `/user` string mapping; fixed, re-verified, second run PASS) |
 
+## Files Changed in Current Phase (Phase 9)
+
+Rewritten: `frontend/src/components/__tests__/Navbar.test.tsx` (real
+`ThemeProvider` + full-shape auth mock + dropdown behavior),
+`skillforge-backend/src/routes/__tests__/auth.test.ts` (7 real middleware
+assertions replacing the zero-assertion placeholder). Modified:
+`frontend/src/components/__tests__/Features.test.tsx` (stale subheading),
+`frontend/src/test/setup.ts` (`matchMedia` mock),
+`skillforge-backend/jest.config.js` (truthful coverage floors + comment).
+New: `frontend/src/services/__tests__/apiContract.test.ts` (7 contract
+assertions), `skillforge-backend/src/routes/__tests__/progress.test.ts`
+(NaN-guard regression). Docs: `docs/PROJECT_STATE.md` (this file),
+`docs/PRODUCTION_PLAN.md` (Phase 9 marked COMPLETE). No production `src`,
+auth-flow, schema, Docker, nginx, or dependency changes. (`tsconfig.*.
+tsbuildinfo` churn from verification runs reverted, uncommitted.)
+
 ## Files Changed in Current Phase (Phase 8)
 
 Modified: `frontend/vite.config.ts` (PWA plugin block only: manifest,
@@ -846,6 +934,15 @@ Recorded for later phases; do not fix early.
   untouched → Phase 9.
 - Phase 9: broken/outdated Navbar & Features tests; backend `auth.test.ts` has
   no assertions; jest 70% coverage thresholds unachievable.
+  → RESOLVED in Phase 9 (reviewer PASS 2026-09-24): Navbar rewritten around
+  real dropdown behavior (+ `matchMedia` test-env mock), Features subheading
+  corrected, `auth.test.ts` replaced with 7 real middleware assertions, NaN
+  progress + API-contract regression suites added, thresholds set to truthful
+  floors (15/18/10/14). Residuals by design: frontend coverage unrunnable
+  (`@vitest/coverage-v8` missing → Phase 11); valid-token DB-accept and live
+  OAuth exchange NOT EXECUTED (no PostgreSQL/provider credentials →
+  Phase 10/12); OAuth single-use/expiry enforced by cookie clear + Max-Age
+  and covered at lib level, live replay/expiry probe belongs to Phase 12.
 - Phase 10: `docker-setup.ps1` references missing `.env.example`; deprecated
   `docker-compose`; compose `version:` obsolete; backend image/container boot
   still unverified (no engine here; code-side build blocker resolved in
@@ -889,6 +986,6 @@ no API-response runtime caching; icon-generator dir/sharp fix).
 
 ## Next Allowed Action
 
-Phase 8 gate PASSED (reviewer PASS 2026-09-24). STOP. Await explicit
-instruction to begin Phase 9 (Testing). Do not
-start Phase 9 automatically.
+Phase 9 gate PASSED (reviewer PASS 2026-09-24). STOP. Await explicit
+instruction to begin Phase 10 (Docker/Nginx). Do not
+start Phase 10 automatically.
