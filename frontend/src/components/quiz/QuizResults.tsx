@@ -1,69 +1,90 @@
 import React from 'react';
+import { QuizAnswerResult } from '../../services/quizService';
 
 interface Question {
   id: string;
   question: string;
   options: string[];
-  correctAnswer: number;
 }
 
 interface QuizResultsProps {
   questions: Question[];
-  answers: number[];
+  answers: QuizAnswerResult[];
+  score: number;
+  total: number;
   onRetry: () => void;
 }
 
-const QuizResults: React.FC<QuizResultsProps> = ({ questions, answers, onRetry }) => {
-  const score = answers.reduce((total, answer, index) => {
-    return total + (answer === questions[index].correctAnswer ? 1 : 0);
-  }, 0);
-
-  const percentage = Math.round((score / questions.length) * 100);
+const QuizResults: React.FC<QuizResultsProps> = ({
+  questions,
+  answers,
+  score,
+  total,
+  onRetry,
+}) => {
+  const percentage = total > 0 ? Math.round((score / total) * 100) : 0;
 
   return (
-    <div className="max-w-2xl mx-auto p-6 bg-white rounded-lg shadow-md">
-      <div className="text-center mb-8">
-        <h2 className="text-2xl font-bold mb-2">Quiz Results</h2>
-        <div className="text-4xl font-bold text-blue-600 mb-2">{percentage}%</div>
-        <p className="text-gray-600">
-          You scored {score} out of {questions.length} questions correctly
+    <div className="mx-auto max-w-2xl rounded-lg bg-white p-6 shadow-md dark:bg-gray-800">
+      <div className="mb-8 text-center">
+        <h2 className="mb-2 text-2xl font-bold text-gray-900 dark:text-white">
+          Quiz Results
+        </h2>
+
+        <div className="mb-2 text-4xl font-bold text-blue-600">
+          {percentage}%
+        </div>
+
+        <p className="text-gray-600 dark:text-gray-300">
+          You scored {score} out of {total} questions correctly.
         </p>
       </div>
 
-      <div className="space-y-6 mb-8">
+      <div className="mb-8 space-y-6">
         {questions.map((question, index) => {
-          const isCorrect = answers[index] === question.correctAnswer;
+          const result = answers[index];
+          const isCorrect = result?.isCorrect ?? false;
+          const selectedAnswer = result?.selectedAnswer;
+          const correctAnswer = result?.correctAnswer;
+
           return (
             <div
               key={question.id}
-              className={`p-4 rounded-lg border ${
-                isCorrect ? 'border-green-200 bg-green-50' : 'border-red-200 bg-red-50'
-              }`}
+              className={
+                'rounded-lg border p-4 ' +
+                (isCorrect
+                  ? 'border-green-200 bg-green-50 dark:border-green-900 dark:bg-green-900/20'
+                  : 'border-red-200 bg-red-50 dark:border-red-900 dark:bg-red-900/20')
+              }
             >
-              <div className="flex items-start mb-2">
+              <div className="flex items-start">
                 <div
-                  className={`w-6 h-6 rounded-full flex items-center justify-center mr-2 ${
-                    isCorrect ? 'bg-green-500' : 'bg-red-500'
-                  }`}
+                  className={
+                    'mr-2 flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-white ' +
+                    (isCorrect ? 'bg-green-500' : 'bg-red-500')
+                  }
+                  aria-hidden="true"
                 >
-                  {isCorrect ? (
-                    <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                    </svg>
-                  ) : (
-                    <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                    </svg>
-                  )}
+                  {isCorrect ? '✓' : '×'}
                 </div>
-                <div>
-                  <p className="font-medium">{question.question}</p>
-                  <p className="text-sm text-gray-600 mt-1">
-                    Your answer: {question.options[answers[index]]}
+
+                <div className="min-w-0">
+                  <p className="font-medium text-gray-900 dark:text-white">
+                    {question.question}
                   </p>
-                  {!isCorrect && (
-                    <p className="text-sm text-green-600 mt-1">
-                      Correct answer: {question.options[question.correctAnswer]}
+
+                  <p className="mt-1 text-sm text-gray-600 dark:text-gray-300">
+                    Your answer:{' '}
+                    {typeof selectedAnswer === 'number' &&
+                    question.options[selectedAnswer] !== undefined
+                      ? question.options[selectedAnswer]
+                      : 'No answer'}
+                  </p>
+
+                  {!isCorrect && typeof correctAnswer === 'number' && (
+                    <p className="mt-1 text-sm text-green-700 dark:text-green-400">
+                      Correct answer:{' '}
+                      {question.options[correctAnswer] ?? 'Unavailable'}
                     </p>
                   )}
                 </div>
@@ -75,8 +96,9 @@ const QuizResults: React.FC<QuizResultsProps> = ({ questions, answers, onRetry }
 
       <div className="text-center">
         <button
+          type="button"
           onClick={onRetry}
-          className="px-6 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+          className="rounded-lg bg-blue-500 px-6 py-2 text-white transition hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
         >
           Try Again
         </button>
@@ -85,4 +107,4 @@ const QuizResults: React.FC<QuizResultsProps> = ({ questions, answers, onRetry }
   );
 };
 
-export default QuizResults; 
+export default QuizResults;
