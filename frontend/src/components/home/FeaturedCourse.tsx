@@ -29,12 +29,7 @@ const FeaturedCourse = () => {
         <div className="absolute inset-x-0 bottom-0 p-6">
           <p className="mb-2 inline-flex rounded-full bg-white/15 px-3 py-1 text-sm font-medium text-white">Sample course</p>
           <h3 className="text-2xl font-bold text-white sm:text-3xl">{featuredCourse.title}</h3>
-          <div className="mt-3 flex flex-wrap gap-4 text-sm text-white/90">
-            {featuredCourse.rating !== undefined && (
-              <span className="inline-flex items-center"><Star className="mr-1 h-4 w-4 fill-current" />{featuredCourse.rating}</span>
-            )}
-            {featuredCourse.students !== undefined && (
-              <span className="inline-flex items-center"><Users className="mr-1 h-4 w-4" />{featuredCourse.students.toLocaleString()} learners in sample data</span>
+          <div className="mt-3 flex flex-wrap gap-4 text-sm text-white/90">learners in sample data</span>
             )}
             <span className="inline-flex items-center"><Clock className="mr-1 h-4 w-4" />{hours > 0 ? hours + 'h ' : ''}{minutes}m</span>
           </div>
