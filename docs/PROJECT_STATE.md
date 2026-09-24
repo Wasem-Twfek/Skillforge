@@ -1,9 +1,9 @@
 # PROJECT_STATE.md — SkillForge Persistent State
 
-CURRENT_PHASE: 9 (Testing)
-CURRENT_STATUS: PHASE 9 COMPLETE — reviewer PASS; STOP, do not start Phase 10 without explicit instruction
+CURRENT_PHASE: 10 (Docker/Nginx)
+CURRENT_STATUS: PHASE 10 COMPLETE — reviewer PASS; STOP, do not start Phase 11 without explicit instruction
 LAST_VERIFIED: 2026-09-24
-LAST_COMMIT: (Phase 9 commit) "Stabilize automated test suite"
+LAST_COMMIT: (Phase 10 commit) "Stabilize containerized deployment"
 
 ---
 
@@ -199,6 +199,64 @@ that was connected to nothing. Then STOP and await approval for Phase 8.
 | `npm run build` (skillforge-backend) | PASS — exit 0 (unchanged) |
 | `git diff --check` | clean (exit 0) |
 | Reviewer (`general` subagent per `.opencode/agents/reviewer.md`) | PASS (vitest/jest/coverage/tsc/eslint re-run; no-prod-diff + scope/secrets re-verified) |
+
+## Completed Work (Phase 10)
+
+- Docker engine BECAME AVAILABLE this phase (Docker Desktop 4.46.0 / Engine
+  28.4.0; previous phases recorded no engine). All runtime verification below
+  is real container evidence, not inspection-only.
+- Findings fixed (all in Phase 10 Allowed list; zero app-source changes):
+  - F-1/F-2/F-3 `frontend/Dockerfile`: deleted the text-placeholder PNG block
+    (wrong path `/app/public` + non-PNG content), deleted the `sed` build
+    bypass that stripped icon-gen + `tsc -b`, removed dead `/app/public`
+    copies. Image now runs the unmodified `npm run build`.
+  - F-4 `nginx.conf`: added `location ^~ /auth/google` → `backend:3001`
+    (path preserved). `/auth/callback` still serves the SPA token page (longer
+    prefix wins); this closes the Phase 5-recorded gap where
+    `GOOGLE_REDIRECT_URI=http://localhost/auth/google/callback` fell into the
+    SPA fallback.
+  - F-5 `docker-compose.yml`: removed obsolete `version: '3.8'`.
+  - F-6 `docker-compose.yml`: postgres healthcheck now interpolates
+    `${POSTGRES_USER:-postgres}` / `${POSTGRES_DB:-skillforge}` (hardcoded
+    `-U postgres` would never turn healthy under an overridden user).
+  - Backend `healthcheck` added (node fetch against the existing DB-checking
+    `GET /health`; `start_period: 60s` covers migrate-deploy boot).
+  - F-7 `docker-setup.ps1`: `docker-compose` → `docker compose`,
+    `prisma migrate dev --name init` → `prisma migrate deploy`, arbitrary
+    10s sleep → bounded `pg_isready` poll (30×2s, fails loudly on timeout),
+    `exec -T` for non-TTY use. (Root/backend `.env.example` files exist, so
+    the recorded "missing .env.example" lead was stale — no fix needed.)
+  - F-8 `.env.example`: `VITE_API_URL=/api` → empty + Phase 4 double-prefix
+    comment (baking `/api` would reintroduce `/api/api/*`).
+- Freshness: pre-existing `skillforge_postgres-data`/`redis-data` volumes
+  (from an earlier stack found running) were removed via project-scoped
+  `docker compose down -v` before startup — DB state below is genuinely clean.
+- Secrets: ephemeral `JWT_SECRET` injected via shell env only (presence-only
+  in reports); backend fail-fast proven first (crashed with the expected
+  `Missing required environment variable JWT_SECRET` before the secret was
+  set — ADR-001 works in-container). No secret printed or committed.
+- Test users created via the register flow remain in the local dev DB (plus
+  the seed row); local-only, no action needed.
+
+## Verified Commands (Phase 10, actual output)
+
+| Command (workdir) | Result |
+|---|---|
+| `docker compose config --quiet` (root) | PASS — exit 0, no `version:` warning |
+| `docker compose build` (root) | PASS — backend (`npm ci` 522 pkgs, `prisma generate` v6.7.0, real `tsc` exit 0) + frontend (`npm ci`, sharp icons ×5 to `/app/frontend/public/icons`, `tsc -b`, vite, precache 34 entries / 631.97 KiB, no glob warning); exit 0 |
+| `docker compose up -d` (root, fresh volumes, ephemeral JWT_SECRET) | PASS — postgres healthy, backend healthy, frontend up, redis up |
+| backend boot log | `migrate deploy`: both migrations applied in order (`20250406214213_init`, `20260924000000_add_lookup_indexes`); `Server is running on port 3001`; presence-only env block |
+| seed ×2 (`exec backend npm run prisma:seed`) | PASS — exit 0 both runs; psql counts after: 1 user / 1 course / 3 lessons (no duplicates) |
+| `GET / :80` / `/health` / `/api/courses` / `/api/auth/me` anon / `/courses` / `/manifest.webmanifest` / `/sw.js` / `/icons/icon-192x192.png` | 200 / 200 (`healthy`) / 200 / 401 / 200 SPA / 200 / 200 / 200 |
+| DB-backed flow via :80 | register→201, `/api/auth/me`→200, course detail 3 lessons, lessons 3, enroll→201, progress→33 (1/3, not NaN), quizzes→200 (0 rows — seed creates none), login→200 |
+| OAuth via :80 | `/auth/google/callback` no-cookie→302 `.../auth/callback?error=invalid_state` (new proxy reaches backend gate); `/api/auth/google`→302 Google + `oauth_state` HttpOnly/Secure/Lax cookie (values redacted); `/auth/callback`→200 SPA (`<div id="root">`, not backend token page) |
+| served `index.html` scan | 0 `localhost:3001` references (same-origin intact) |
+| container icon audit | real PNG magic bytes, 192×192 (placeholder era over) |
+| headless-Chrome `:80/` dump-dom | full React shell (navbar/footer/bundles/manifest link), no backend-URL strings |
+| `docker compose restart backend` | PASS — healthy again in ~25s, `/health`+`/api/courses` 200 (migrate re-run idempotent) |
+| `npx vitest run` (frontend) / `npx jest` (backend) | PASS — 4 files/22 and 3 suites/22 (unchanged vs Phase 9) |
+| `git diff --check` | clean (exit 0) |
+| Reviewer (`general` subagent per `.opencode/agents/reviewer.md`) | PASS (config/build/stack/migrate/seed/proxy/OAuth/tests/secrets/scope re-verified; psql `_prisma_migrations` order + counts independently confirmed) |
 
 ## Verified Commands (Phase 8, actual output)
 
@@ -702,6 +760,21 @@ Recorded but not re-run in this session (same environment, prior evidence):
 | `git diff --check` | clean (exit 0) |
 | Reviewer (`general` subagent per `.opencode/agents/reviewer.md`) | PASS (first run FAIL caught an untouched `/user` string mapping; fixed, re-verified, second run PASS) |
 
+## Files Changed in Current Phase (Phase 10)
+
+Modified: `frontend/Dockerfile` (placeholder-PNG block, `sed` build bypass,
+and dead `/app/public` copies removed; unmodified `npm run build`),
+`nginx.conf` (new `location ^~ /auth/google` → backend; `/auth/callback`
+stays SPA), `docker-compose.yml` (`version:` removed, postgres healthcheck
+interpolates user/db, backend healthcheck on `GET /health` added),
+`docker-setup.ps1` (`docker compose`, `migrate deploy`, `pg_isready` poll
+with `POSTGRES_USER` alignment, `exec -T`), `.env.example`
+(`VITE_API_URL` emptied + Phase 4 comment). Docs:
+`docs/PROJECT_STATE.md` (this file), `docs/PRODUCTION_PLAN.md` (Phase 10
+marked COMPLETE). No app source, auth-flow, schema/migration, test, or
+dependency changes. (`tsconfig.*.tsbuildinfo` churn from test runs reverted,
+uncommitted.)
+
 ## Files Changed in Current Phase (Phase 9)
 
 Rewritten: `frontend/src/components/__tests__/Navbar.test.tsx` (real
@@ -947,6 +1020,18 @@ Recorded for later phases; do not fix early.
   `docker-compose`; compose `version:` obsolete; backend image/container boot
   still unverified (no engine here; code-side build blocker resolved in
   Phase 2).
+  → RESOLVED in Phase 10 (reviewer PASS 2026-09-24, real Docker Desktop
+  4.46.0 engine): both images build with real steps (frontend sed/placeholder
+  bypass removed); `version:` removed; setup script modernized
+  (`docker compose`, `migrate deploy`, readiness poll); `.env.example`
+  presence verified (lead was stale); nginx `/auth/google*` now proxied;
+  fresh-DB migrate + double seed + full Nginx/API/OAuth/restart flow verified.
+  Residuals by design: real Google code exchange NOT EXECUTED (no provider
+  credentials — routing + `invalid_state` failure only); audit counts
+  re-observed at build (backend 22 vulns 4/5/11/2, frontend 37 vulns 3/6/26/2
+  → Phase 11); Prisma generator-output-path deprecation warning persists
+  (→ Phase 11); published host ports (5432/6379/3001/80) kept as local-dev
+  convenience; test users from the register flow remain in the local dev DB.
 - Phase 11: `npm audit` findings above; dependency-outdated list recorded in
   prior audit (axios, prisma, vite, vitest, express, etc.) — upgrade only in
   this phase, coordinated.
@@ -986,6 +1071,10 @@ no API-response runtime caching; icon-generator dir/sharp fix).
 
 ## Next Allowed Action
 
-Phase 9 gate PASSED (reviewer PASS 2026-09-24). STOP. Await explicit
-instruction to begin Phase 10 (Docker/Nginx). Do not
-start Phase 10 automatically.
+Phase 10 gate PASSED (reviewer PASS 2026-09-24). STOP. Await explicit
+instruction to begin Phase 11 (Dependency/security maintenance). Do not
+start Phase 11 automatically.
+The container stack is left RUNNING (postgres healthy, backend healthy,
+frontend up, redis up) with the fresh verified DB; ephemeral JWT_SECRET lives
+only in this session's shell env — a restart outside this shell needs it
+re-supplied (see `.env.example`).

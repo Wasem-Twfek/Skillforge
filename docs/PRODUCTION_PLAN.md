@@ -268,7 +268,7 @@ PHASE 9 GATE:
 
 ---
 
-## PHASE 10 — Docker and Nginx
+## PHASE 10 — Docker and Nginx (COMPLETE 2026-09-24, reviewer PASS)
 
 - Objective: reliable containerized deployment: backend image builds; Prisma
   generate/migrate behavior correct; frontend image builds with real icons and
