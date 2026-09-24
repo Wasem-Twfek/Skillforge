@@ -1,11 +1,13 @@
 import React, { useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
+import { useQueryClient } from '@tanstack/react-query';
 import { useCourse, useLessonsByCourse } from '../hooks/useCourses';
 import { courseService } from '../services/courseService';
 
 const CourseDetail: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const [isEnrolling, setIsEnrolling] = useState(false);
   const [isEnrolled, setIsEnrolled] = useState(false);
   const [enrollError, setEnrollError] = useState<string | null>(null);
@@ -53,6 +55,7 @@ const CourseDetail: React.FC = () => {
     try {
       await courseService.enrollInCourse(id);
       setIsEnrolled(true);
+      await queryClient.invalidateQueries({ queryKey: ['userCourses'] });
     } catch (err: unknown) {
       const response =
         typeof err === 'object' && err !== null && 'response' in err
