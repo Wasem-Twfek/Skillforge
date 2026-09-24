@@ -1,7 +1,7 @@
 # SkillForge
 
-[![CI](https://github.com/wasem15/Skillforge/actions/workflows/ci.yml/badge.svg)](https://github.com/wasem15/Skillforge/actions/workflows/ci.yml)
-[![Security](https://github.com/wasem15/Skillforge/actions/workflows/security.yml/badge.svg)](https://github.com/wasem15/Skillforge/actions/workflows/security.yml)
+[![CI](https://github.com/Wasem-Twfek/Skillforge/actions/workflows/ci.yml/badge.svg)](https://github.com/Wasem-Twfek/Skillforge/actions/workflows/ci.yml)
+[![Security](https://github.com/Wasem-Twfek/Skillforge/actions/workflows/security.yml/badge.svg)](https://github.com/Wasem-Twfek/Skillforge/actions/workflows/security.yml)
 
 SkillForge is a full-stack microlearning platform for short, focused learning sessions. It brings course browsing, lessons, enrollment, progress tracking, quizzes, authentication, PWA support, and Docker deployment into one application.
 
