@@ -61,6 +61,16 @@ Create the local environment files from the provided .env.example files and set 
     npm run prisma:generate
     npm run prisma:migrate
 
+### Development seed
+
+To create the local demo instructor and sample course data, set
+SEED_INSTRUCTOR_PASSWORD in skillforge-backend/.env, then run:
+
+    cd skillforge-backend
+    npm run prisma:seed
+
+Do not use the seed against production databases.
+
 ### Start the application
 
 Backend:
@@ -83,7 +93,7 @@ Start the full local stack with:
 
 The default entry point is http://localhost.
 
-Use deployment-managed secrets in production. Do not run the development seed against a production database.
+Use deployment-managed secrets in production. The Docker stack requires JWT_SECRET. Do not run the development seed against a production database.
 
 ## Testing
 
