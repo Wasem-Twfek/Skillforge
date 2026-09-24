@@ -109,6 +109,6 @@ See SECURITY.md for the reporting process.
 
 ## Project notes
 
-Google OAuth is implemented in the application, but the external provider exchange was not live-tested during the final local validation because provider credentials were unavailable.
+Google OAuth is implemented in the application. A live provider exchange requires valid Google credentials and redirect configuration in the local environment.
 
-The landing page uses sample course data for presentation. The main learning flows use the backend API.
+The landing page uses sample course data for presentation. The main learning flows use the backend API. Quiz attempts are validated, scored, and stored server-side.
