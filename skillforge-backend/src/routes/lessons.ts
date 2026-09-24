@@ -19,9 +19,6 @@ router.get('/:id', authenticate, async (req, res) => {
   try {
     const lesson = await prisma.lesson.findUnique({
       where: { id: req.params.id },
-      include: {
-        quiz: true,
-      },
     });
     if (!lesson) {
       return res.status(404).json({ error: 'Lesson not found' });
