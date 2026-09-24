@@ -12,7 +12,6 @@ interface Question {
 interface QuizProps {
   quizId: string;
   questions: Question[];
-  onComplete?: (score: number, total: number) => void;
 }
 
 const Quiz: React.FC<QuizProps> = ({ quizId, questions, onComplete }) => {
@@ -42,7 +41,6 @@ const Quiz: React.FC<QuizProps> = ({ quizId, questions, onComplete }) => {
     try {
       const result = await quizService.submitAttempt(quizId, newAnswers);
       setAttempt(result);
-      onComplete?.(result.score, result.total);
     } catch (error: unknown) {
       setSubmitError(
         error instanceof Error
