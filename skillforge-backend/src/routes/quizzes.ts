@@ -11,7 +11,7 @@ type QuizQuestion = {
   correctAnswer?: number;
 };
 
-function publicQuestions(value: unknown): Array<Omit<QuizQuestion, 'correctAnswer'>> {
+function toPublicQuestions(value: unknown): Array<Omit<QuizQuestion, 'correctAnswer'>> {
   if (!Array.isArray(value)) {
     return [];
   }
@@ -21,7 +21,7 @@ function publicQuestions(value: unknown): Array<Omit<QuizQuestion, 'correctAnswe
       return {};
     }
 
-    const item = question as QuizQuestion;
+    const item = question as Partial<QuizQuestion>;
     return {
       ...(item.id !== undefined ? { id: item.id } : {}),
       ...(item.question !== undefined ? { question: item.question } : {}),
