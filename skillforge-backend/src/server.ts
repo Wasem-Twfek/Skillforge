@@ -57,7 +57,7 @@ app.get('/', (_req, res) => {
         updateProfile: 'PUT /api/users/profile (requires authentication)',
       },
       lessons: {
-        list: 'GET /api/lessons (requires authentication)',
+        list: 'GET /api/lessons',
         detail: 'GET /api/lessons/:id (requires authentication)',
       },
       quizzes: {
