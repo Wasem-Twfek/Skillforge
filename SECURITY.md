@@ -2,25 +2,31 @@
 
 ## Reporting a vulnerability
 
-Please report security issues privately instead of opening a public issue with sensitive details.
+Please report security issues privately rather than opening a public issue with sensitive details.
 
 Include:
 
-- A clear description of the issue
-- Steps to reproduce it
-- The affected component or endpoint
+- What you found
+- How to reproduce it
+- The affected file or endpoint
 - Any logs or proof of concept that can be shared safely
 
 ## Secrets
 
-Do not commit passwords, API keys, OAuth client secrets, JWT secrets, database credentials, or local .env files.
+Do not commit:
 
-Use the provided .env.example files as templates and provide real values through the local environment or a deployment secret manager.
+- Passwords or API keys
+- OAuth client secrets
+- JWT or session secrets
+- Database credentials
+- Local `.env` files
 
-## Previously exposed credentials
+Use the provided `.env.example` files for local configuration. Production secrets should come from the deployment environment or a secret manager.
 
-Any credential that appeared in repository history should be treated as compromised. Rotate or revoke it before using a replacement credential.
+## Repository history
+
+Credentials that have appeared in Git history should be considered exposed. Rotate or revoke them before using replacement values.
 
 ## Production
 
-Do not use development seed data in production. Review Docker port exposure, authentication settings, and secret management before deploying publicly.
+Do not use development seed data in production. Before exposing the application publicly, review authentication settings, container port exposure, TLS, and secret management.
