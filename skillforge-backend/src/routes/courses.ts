@@ -152,9 +152,6 @@ router.get('/:id', async (req, res) => {
         },
         lessons: {
           orderBy: { order: 'asc' },
-          include: {
-            quiz: true,
-          },
         },
       },
     });
