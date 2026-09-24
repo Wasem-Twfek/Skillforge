@@ -117,6 +117,7 @@ const CourseDetail: React.FC = () => {
 
           {showQuiz && selectedQuiz ? (
             <Quiz
+              quizId={selectedQuiz.id || ''}
               questions={selectedQuiz.questions}
               onComplete={handleQuizComplete}
             />
