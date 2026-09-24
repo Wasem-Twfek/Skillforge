@@ -1,34 +1,9 @@
 import express from 'express';
 import { authenticate } from '../middleware/auth';
 import prisma from '../lib/prisma';
+import { QuizQuestion, toPublicQuestions } from '../lib/quiz';
 
 const router = express.Router();
-
-type QuizQuestion = {
-  id?: string;
-  question?: string;
-  options?: string[];
-  correctAnswer?: number;
-};
-
-function toPublicQuestions(value: unknown): Array<Omit<QuizQuestion, 'correctAnswer'>> {
-  if (!Array.isArray(value)) {
-    return [];
-  }
-
-  return value.map((question) => {
-    if (typeof question !== 'object' || question === null) {
-      return {};
-    }
-
-    const item = question as Partial<QuizQuestion>;
-    return {
-      ...(item.id !== undefined ? { id: item.id } : {}),
-      ...(item.question !== undefined ? { question: item.question } : {}),
-      ...(Array.isArray(item.options) ? { options: item.options } : {}),
-    };
-  });
-}
 
 router.get('/', authenticate, async (_req, res) => {
   try {
@@ -46,7 +21,7 @@ router.get('/', authenticate, async (_req, res) => {
         id: quiz.id,
         title: quiz.title,
         lessonId: quiz.lessonId,
-        questions: publicQuestions(quiz.questions),
+        questions: toPublicQuestions(quiz.questions),
       })),
     );
   } catch (error) {
@@ -72,7 +47,7 @@ router.get('/:id', authenticate, async (req, res) => {
       id: quiz.id,
       title: quiz.title,
       lessonId: quiz.lessonId,
-      questions: publicQuestions(quiz.questions),
+      questions: toPublicQuestions(quiz.questions),
       createdAt: quiz.createdAt,
       updatedAt: quiz.updatedAt,
     });
@@ -112,6 +87,7 @@ router.post('/', authenticate, async (req, res) => {
         typeof item.question === 'string' &&
         Array.isArray(item.options) &&
         item.options.length > 0 &&
+        typeof item.correctAnswer === 'number' &&
         Number.isInteger(item.correctAnswer) &&
         item.correctAnswer >= 0 &&
         item.correctAnswer < item.options.length
@@ -155,7 +131,7 @@ router.post('/', authenticate, async (req, res) => {
       id: quiz.id,
       title: quiz.title,
       lessonId: quiz.lessonId,
-      questions: publicQuestions(quiz.questions),
+      questions: toPublicQuestions(quiz.questions),
     });
   } catch (error) {
     console.error(
