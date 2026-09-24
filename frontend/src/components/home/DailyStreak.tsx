@@ -88,7 +88,7 @@ const DailyStreak = () => {
               <div className="mb-6">
                 <div className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3 flex items-center">
                   <Calendar className="w-4 h-4 mr-2" />
-                  This Week's Progress
+                  This Week&apos;s Progress
                 </div>
                 <div className="flex justify-between">
                   {weekDays.map((day, index) => (

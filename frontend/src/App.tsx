@@ -40,6 +40,7 @@ const Quizzes = lazy(() => import('./pages/Quizzes'));
 const Dashboard = lazy(() => import('./pages/Dashboard'));
 const CourseDetail = lazy(() => import('./pages/CourseDetail'));
 const Courses = lazy(() => import('./pages/Courses'));
+const Offline = lazy(() => import('./pages/Offline'));
 
 // Components
 import PWAUpdatePrompt from './components/PWAUpdatePrompt';
@@ -97,6 +98,11 @@ const AnimatedRoutes = () => {
           <Route path="/courses/:id" element={
             <Suspense fallback={<PageLoader />}>
               <PageTransition type="scale"><CourseDetail /></PageTransition>
+            </Suspense>
+          } />
+          <Route path="/offline" element={
+            <Suspense fallback={<PageLoader />}>
+              <PageTransition type="fade"><Offline /></PageTransition>
             </Suspense>
           } />
           

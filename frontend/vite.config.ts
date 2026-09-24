@@ -38,9 +38,10 @@ export default defineConfig({
         globDirectory: './dist',
         runtimeCaching: [
           {
-            urlPattern: ({ url }) => {
-              // Use (import.meta as any).env for TS compatibility
-              const apiUrl = (import.meta as any).env?.VITE_API_URL || 'http://localhost:3001';
+            urlPattern: ({ url }: { url: URL }) => {
+              // Same origin rule as the dev proxy below: the baked
+              // VITE_API_URL (or the dev backend default).
+              const apiUrl = process.env.VITE_API_URL || 'http://localhost:3001';
               return url.origin === apiUrl;
             },
             handler: 'StaleWhileRevalidate', // Better for API calls

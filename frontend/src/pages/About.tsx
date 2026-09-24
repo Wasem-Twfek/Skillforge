@@ -34,7 +34,7 @@ const About: React.FC = () => {
             <p className="text-gray-600 dark:text-gray-300 mb-4">
               At SkillForge, we believe that education should be accessible, engaging, and effective.
               Our mission is to provide high-quality learning experiences that help individuals develop
-              the skills they need to succeed in today's rapidly evolving digital landscape.
+              the skills they need to succeed in today&apos;s rapidly evolving digital landscape.
             </p>
             <p className="text-gray-600 dark:text-gray-300">
               We combine expert-led instruction with hands-on practice and interactive assessments
@@ -51,7 +51,7 @@ const About: React.FC = () => {
           >
             <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-4">Our Approach</h2>
             <p className="text-gray-600 dark:text-gray-300 mb-4">
-              We've designed SkillForge with a focus on practical, project-based learning. Our
+              We&apos;ve designed SkillForge with a focus on practical, project-based learning. Our
               curriculum is structured to build skills progressively, with each lesson building
               upon the previous ones.
             </p>

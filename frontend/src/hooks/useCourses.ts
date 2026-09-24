@@ -20,14 +20,6 @@ export const useUserCourses = () => {
   });
 };
 
-// React Query hooks for course catalog
-export const useCourses = () => {
-  return useQuery<Course[]>({
-    queryKey: ['courses'],
-    queryFn: courseService.getAllCourses
-  });
-};
-
 export const useCourse = (id: string) => {
   return useQuery<Course | undefined>({
     queryKey: ['course', id],
@@ -36,56 +28,10 @@ export const useCourse = (id: string) => {
   });
 };
 
-export const useCoursesByCategory = (category: string) => {
-  return useQuery<Course[]>({
-    queryKey: ['courses', 'category', category],
-    queryFn: () => courseService.getCoursesByCategory(category),
-    enabled: !!category
-  });
-};
-
-export const useCoursesByLevel = (level: string) => {
-  return useQuery<Course[]>({
-    queryKey: ['courses', 'level', level],
-    queryFn: () => courseService.getCoursesByLevel(level),
-    enabled: !!level
-  });
-};
-
-export const useSearchCourses = (query: string) => {
-  return useQuery<Course[]>({
-    queryKey: ['courses', 'search', query],
-    queryFn: () => courseService.searchCourses(query),
-    enabled: !!query
-  });
-};
-
-export const useLesson = (courseId: string, lessonId: string) => {
-  return useQuery<any>({
-    queryKey: ['lesson', courseId, lessonId],
-    queryFn: () => courseService.getLesson(courseId, lessonId),
-    enabled: !!courseId && !!lessonId
-  });
-};
-
 export const useLessonsByCourse = (courseId: string) => {
-  return useQuery<any[]>({
+  return useQuery({
     queryKey: ['lessons', courseId],
     queryFn: () => courseService.getLessonsByCourseId(courseId),
     enabled: !!courseId
-  });
-};
-
-export const useTopRatedCourses = (limit: number = 5) => {
-  return useQuery<Course[]>({
-    queryKey: ['courses', 'top-rated', limit],
-    queryFn: () => courseService.getTopRatedCourses(limit)
-  });
-};
-
-export const usePopularCourses = (limit: number = 5) => {
-  return useQuery<Course[]>({
-    queryKey: ['courses', 'popular', limit],
-    queryFn: () => courseService.getPopularCourses(limit)
   });
 };

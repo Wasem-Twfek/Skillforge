@@ -2,7 +2,7 @@ import React, { createContext, useState, useContext, useEffect, ReactNode } from
 
 // Import API URL from environment (nullish keeps a production empty string
 // relative; only undefined/null fall back to dev).
-const API_URL = (import.meta as any).env?.VITE_API_URL ?? 'http://localhost:3001';
+const API_URL = import.meta.env?.VITE_API_URL ?? 'http://localhost:3001';
 
 // Auth calls use relative /api/auth/* paths so they resolve through the dev
 // proxy and the production nginx rewrite in the same way. Absolute /auth/*
@@ -172,9 +172,9 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       setUser(data.user);
       
       return true;
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Email login error:', err);
-      setError(err.message || 'Failed to login. Please check your credentials.');
+      setError(err instanceof Error ? err.message : 'Failed to login. Please check your credentials.');
       return false;
     } finally {
       setIsLoading(false);
@@ -208,9 +208,9 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       setUser(responseData.user);
       
       return true;
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Registration error:', err);
-      setError(err.message || 'Failed to register. Please try again.');
+      setError(err instanceof Error ? err.message : 'Failed to register. Please try again.');
       return false;
     } finally {
       setIsLoading(false);

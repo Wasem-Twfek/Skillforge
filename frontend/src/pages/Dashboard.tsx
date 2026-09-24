@@ -7,30 +7,31 @@ const Dashboard: React.FC = () => {
   const { user } = useAuth();
   const { data: userCourses, isLoading, error } = useUserCourses();
 
-  if (isLoading) return <div>Loading...</div>;
-  if (error) return <div>Error: {error.message}</div>;
-
-  // Memoize the courses array to prevent unnecessary re-creation
-  const courses: CourseState[] = useMemo(() => 
+  // Hooks must run unconditionally on every render: compute the memoized
+  // course state first, then branch on loading/error below.
+  const courses: CourseState[] = useMemo(() =>
     Array.isArray(userCourses) ? userCourses : [],
     [userCourses]
   );
-  
+
   // Memoize expensive calculations
   const { inProgressCourses, completedCourses, notStartedCourses, totalProgress } = useMemo(() => {
     const inProgress = courses.filter((course) => course.progress > 0 && course.progress < 100);
     const completed = courses.filter((course) => course.progress === 100);
     const notStarted = courses.filter((course) => course.progress === 0);
-    const total = courses.length ? 
+    const total = courses.length ?
       courses.reduce((acc, course) => acc + course.progress, 0) / courses.length : 0;
-    
-    return { 
-      inProgressCourses: inProgress, 
-      completedCourses: completed, 
-      notStartedCourses: notStarted, 
-      totalProgress: total 
+
+    return {
+      inProgressCourses: inProgress,
+      completedCourses: completed,
+      notStartedCourses: notStarted,
+      totalProgress: total
     };
   }, [courses]);
+
+  if (isLoading) return <div>Loading...</div>;
+  if (error) return <div>Error: {error.message}</div>;
 
   return (
     <div className="container mx-auto px-4 py-8 bg-white dark:bg-gray-900 transition-colors duration-300">

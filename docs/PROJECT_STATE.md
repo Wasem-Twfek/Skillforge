@@ -1,26 +1,28 @@
 # PROJECT_STATE.md — SkillForge Persistent State
 
-CURRENT_PHASE: 6 (Database and Prisma)
-CURRENT_STATUS: PHASE 6 COMPLETE — reviewer PASS; STOP, do not start Phase 7 without explicit instruction
+CURRENT_PHASE: 7 (Frontend correctness and integration)
+CURRENT_STATUS: PHASE 7 COMPLETE — reviewer PASS; STOP, do not start Phase 8 without explicit instruction
 LAST_VERIFIED: 2026-09-24
-LAST_COMMIT: (Phase 6 closure commit) "Stabilize database schema and Prisma queries"
+LAST_COMMIT: (Phase 7 closure commit) "Fix frontend integration and type errors"
 
 ---
 
 ## Current Phase
 
-Phase 6 — Database and Prisma. Make the database and Prisma layer internally
-consistent, reliable, and safe for the existing application. Then STOP and
-await approval for Phase 7.
+Phase 7 — Frontend correctness and integration. Make the existing frontend
+type-safe, integrated with the verified backend contract, free of dead
+integration code, correctly routed, and correct in loading/error/empty-state
+handling. Then STOP and await approval for Phase 8.
 
 ## Current Objective
 
-Per `docs/PRODUCTION_PLAN.md` Phase 6: verify schema/migrations/seed against
-actual application usage; fix confirmed model drift, the NaN-progress lead,
-and the migration gap for justified indexes; make the seed idempotent;
-analyze transaction requirements. Then STOP and await approval for Phase 7.
+Per `docs/PRODUCTION_PLAN.md` Phase 7: fix frontend type errors and real lint
+blockers (with config fixes for false-positive rules), remove verified dead
+auth/API hooks/services/pages, resolve response-shape mismatches on the
+frontend side (D-006), fix broken routes and React hook violations, wire UI
+that was connected to nothing. Then STOP and await approval for Phase 8.
 
-## Completed Work (Phase 6)
+## Completed Work (Phase 6 — historical record)
 
 - NaN-progress root cause (verified, not assumed): `POST /:id/progress`
   (`src/routes/courses.ts`) computed
@@ -65,6 +67,89 @@ analyze transaction requirements. Then STOP and await approval for Phase 7.
   `directUrl` semantics unchanged. Relations, nullability, and unique
   constraints verified matching all query usage (see inventory in session).
 - `git diff --check` clean. No API, auth, frontend, nginx, or dependency changes.
+
+## Completed Work (Phase 7)
+
+- TypeScript green (verified, not assumed): reproduced the exact 2 baseline
+  errors (`useOptimizedQuery.ts:32 TS6133`, `:85 TS2352`); both are gone
+  because the file was proven dead (sole caller was the unrouted
+  `CourseDetails.tsx`) and deleted along with its dead subsystem
+  (`useShallowStore`, `store/useAppStore`, `CourseDetails.tsx`).
+  `tsc --noEmit` now exits 0 for both `tsconfig.app.json` and
+  `tsconfig.node.json`. Making API-absent fields optional in
+  `types/course.ts` surfaced exactly 3 further strict errors, all fixed at
+  their readers (no `any`, no ts-ignore).
+- ESLint green: 704 problems → exit 0 (0 errors, 3 benign react-refresh
+  warnings on context files). 621 `react-in-jsx-scope` hits were false
+  positives under the `react-jsx` runtime — fixed by config
+  (`settings.react.runtime: 'automatic'`); 30 `react/prop-types` hits
+  disabled for TS (interfaces are the contract); scoped override for the two
+  plain-JS PWA scripts (Phase 8-owned, contents untouched). Real blockers
+  fixed: 4 rules-of-hooks violations (early returns before `useMemo` in
+  `Dashboard`/`Profile`, conditional `useLayoutEffect` in
+  `useRenderTimeTracking`), 19 `no-explicit-any` (narrowed catches, minimal
+  local interfaces, typed `import.meta.env` via extended `ImportMetaEnv`),
+  17 `no-unescaped-entities`, unused vars (`tailwind.config.js` plugin param).
+- Dead integration code deleted after zero-reference verification (grep +
+  `tsc` exit 0): zustand `hooks/useAuth.ts` (also contract-wrong:
+  `/api/auth/logout` and `/api/auth/profile` do not exist), `hooks/useApi.ts`,
+  `services/user.ts` (hardcoded `:3001`, nonexistent `/users/:id/progress`),
+  `stores/useStore.ts` (third unused store), `store/useAppStore.ts`
+  (resolves the two-theme-stores lead; `ThemeContext` is the live system),
+  `hooks/useShallowStore.ts`, `hooks/useOptimizedQuery.ts`,
+  `pages/CourseDetails.tsx` (unrouted duplicate of `CourseDetail`),
+  `components/OfflineDetector.tsx` (never mounted),
+  `components/courses/CourseList.tsx` + `courses/CourseCard.tsx` (zero
+  importers). Dead methods removed: 6 unused `useCourses.ts` hooks, 6
+  filter/sort/search service methods encoding server filtering the backend
+  ignores (Phase 4 known limitation), dead `submitQuizAttempt` (zero callers,
+  omitted backend-required `userId`/`score`).
+- D-006 decided (ADR-006): backend singular 1-1 `quiz` is authoritative; the
+  `quizzes: Quiz[]` array type is gone, live code reads `lesson?.quiz`.
+- Type-vs-API honesty: `category`/`level` unions → `string` (backend free
+  text); `rating/reviews/students/price/tags/duration` → optional;
+  `avatar`/`bio` → nullable. `CourseDetail` no longer renders `$undefined`
+  (conditional commerce block, duration, avatar). Mock-fed Home components
+  unchanged in behavior (`?? 0`/`?? []` only where strictness requires).
+- Profile email mismatch fixed: `ProfileForm` submitted `email` that the
+  backend `PUT /profile` silently ignores — removed from the form data (the
+  form never rendered an email input; nothing the user could save was lost).
+- Auth integration: `Signup` Google button used an absolute
+  `${API_URL}/auth/google` URL (breaks behind nginx where only `/api/auth/*`
+  is proxied) — now uses the canonical `loginWithGoogle()` (`/api/auth/google`,
+  same as Login). No token-storage or flow redesign.
+- Wired UI that was connected to nothing: `CourseDetail` Enroll button was a
+  `TODO` console.log — now calls `enrollInCourse` with pending/disabled,
+  enrolled, and error states, treating the backend's 400 `Already enrolled`
+  as enrolled. `Quizzes` page was an empty placeholder — now fetches
+  `GET /api/quizzes` when authenticated (gated by token, matching the
+  endpoint's auth requirement) with loading/error/empty states and lesson
+  links; question count guarded by `Array.isArray` (backend `questions` is
+  opaque Json).
+- Routing: dead `/my-courses` link → `/dashboard` (the live enrolled-courses
+  page); registered the missing `/offline` route for the existing
+  `Offline.tsx`; fixed `SearchBar` deep link `?q=` → `?search=` to match what
+  `Courses.tsx` actually reads. Deferred with evidence (no page, no endpoint,
+  no owning phase): `/forgot-password`, `/terms`, `/privacy`,
+  `/learning-paths`.
+- `git diff --check` clean. Frontend-only diff; no backend, schema,
+  auth-flow, PWA-functional, or dependency changes.
+
+## Verified Commands (Phase 7, actual output)
+
+| Command (workdir) | Result |
+|---|---|
+| `npx tsc --noEmit -p tsconfig.app.json` (frontend) | PASS — exit 0 (was FAIL, 2 errors) |
+| `npx tsc --noEmit -p tsconfig.node.json` (frontend) | PASS — exit 0 (unchanged) |
+| `npx eslint .` (frontend) | PASS — exit 0, 0 errors, 3 react-refresh warnings (was FAIL, 704 problems) |
+| `npm run build` (frontend: PWA icons + `tsc -b` + `vite build`) | PASS — exit 0, built in ~20s (workbox empty-precache warning persists — known Phase-8 item) |
+| `npx vitest run` (frontend) | 2 files / 6 failed / 9 passed — IDENTICAL to baseline (Navbar ThemeProvider, Features text; Phase-9-owned, no regression) |
+| `npx tsc --noEmit -p tsconfig.json` (skillforge-backend) | PASS — exit 0 (unchanged) |
+| `npm run build` (skillforge-backend) | PASS — exit 0 (unchanged) |
+| `npx jest` (skillforge-backend) | PASS — 2 suites, 13 tests (unchanged) |
+| `git diff --check` | clean (exit 0) |
+| Browser runtime flows | NOT EXECUTED — no browser harness in this environment (`vite preview` smoke could not establish a connection); STATIC VERIFIED via build + typecheck + lint. DB-backed flows additionally limited per Phase 6 (no PostgreSQL). |
+| Reviewer (`general` subagent per `.opencode/agents/reviewer.md`) | PASS (tsc app+node/eslint re-run; deletions grep-verified; scope/secrets re-verified) |
 
 ## Verified Commands (Phase 6, actual output)
 
@@ -423,6 +508,38 @@ Recorded but not re-run in this session (same environment, prior evidence):
 | `git diff --check` | clean (exit 0) |
 | Reviewer (`general` subagent per `.opencode/agents/reviewer.md`) | PASS (first run FAIL caught an untouched `/user` string mapping; fixed, re-verified, second run PASS) |
 
+## Files Changed in Current Phase (Phase 7)
+
+Deleted after zero-reference verification (grep + `tsc` exit 0):
+`frontend/src/hooks/useAuth.ts`, `src/hooks/useApi.ts`,
+`src/hooks/useOptimizedQuery.ts`, `src/hooks/useShallowStore.ts`,
+`src/services/user.ts`, `src/stores/useStore.ts`, `src/store/useAppStore.ts`
+(+ empty `store/`/`stores/` dirs), `src/pages/CourseDetails.tsx`,
+`src/components/OfflineDetector.tsx`,
+`src/components/courses/CourseList.tsx`,
+`src/components/courses/CourseCard.tsx`.
+Modified: `frontend/src/types/course.ts` (contract-honest optionality),
+`src/services/lessonService.ts` (D-006 singular quiz, dead method removed),
+`src/services/courseService.ts` (contract-wrong filter methods removed),
+`src/hooks/useCourses.ts` (dead hooks removed, `any` removed),
+`src/pages/CourseDetail.tsx` (guards + enroll wiring),
+`src/pages/Quizzes.tsx` (wired to `GET /api/quizzes`),
+`src/pages/Courses.tsx` (`/my-courses` → `/dashboard`, entity escapes),
+`src/App.tsx` (`/offline` route), `src/contexts/AuthContext.tsx` +
+`src/lib/axios.ts` + `src/utils/performanceMonitor.ts` (typed env, narrowed
+catches, hook-order fix), `src/components/ProfileForm.tsx` (email removed),
+`src/pages/Signup.tsx` (canonical Google URL), `src/pages/Login.tsx` +
+`src/pages/AuthCallback.tsx` (narrowed catches), `src/pages/Dashboard.tsx` +
+`src/pages/Profile.tsx` (hook-order fix), `src/components/home/*`
+(strict-null + entity fixes), `src/pages/About.tsx` + `src/pages/Offline.tsx`
+(entity escapes), `src/vite-env.d.ts` (real env vars),
+`frontend/.eslintrc.cjs` (false-positive rules + PWA-script override),
+`frontend/tailwind.config.js` (unused param), `frontend/vite.config.ts`
+(workbox type hygiene). Docs: `docs/DECISIONS.md` (ADR-006, D-006 decided),
+`docs/PRODUCTION_PLAN.md` (Phase 7 marked COMPLETE),
+`docs/PROJECT_STATE.md` (this file). No backend, schema, auth-flow,
+PWA-functional, or dependency changes.
+
 ## Files Changed in Current Phase (Phase 6)
 
 Modified: `skillforge-backend/src/routes/courses.ts` (NaN guard in
@@ -546,6 +663,18 @@ Recorded for later phases; do not fix early.
 - Phase 6: seed `course.create` (not upsert) can duplicate; no `@@index` on
   `Lesson.order`, `LessonProgress.enrollmentId`; progress math can produce NaN;
   committed generated Prisma client (`.so`/`.dll`) bloats repo.
+- Phase 7 (residual, verified 2026-09-24): tsc app+node green, eslint exit 0
+  (3 react-refresh warnings), dead subsystem deleted, D-006 decided (ADR-006),
+  enroll + quizzes wired, `/my-courses`→`/dashboard`, `/offline` registered.
+  Remaining by design: dead links with no page/endpoint/owning phase
+  (`/forgot-password`, `/terms`, `/privacy`, `/learning-paths`) left in place
+  and recorded (removing user-facing content needs a product owner);
+  `Lessons.tsx` list page left unrouted (complete page duplicating the
+  `/courses` lesson grid — needs a routing/product decision, not silent
+  deletion); `frontend/PERFORMANCE_OPTIMIZATIONS.md` still documents the
+  deleted `useOptimizedQuery`/`useShallowStore` subsystem (docs accuracy
+  belongs to Phase 13); browser runtime NOT EXECUTED (no harness here);
+  vitest stays at baseline 2/6/9 → Phase 9.
 - Phase 6 (residual, verified 2026-09-24): schema/migration/seed stabilized
   (NaN guard, forward index migration, idempotent seed, lesson ordering;
   ADR-005, D-008 decided). Remaining by design: live `migrate deploy` on a
@@ -582,6 +711,8 @@ production fail-fast on missing `JWT_SECRET`). Phase 4 added ADR-002
 (cookie-based OAuth CSRF state) and ADR-004 (keep `localStorage` JWT).
 Phase 6 added ADR-005 (idempotent seed via lookup guards; FK lookup indexes
 via forward migration; no field inventions, no transactions).
+Phase 7 added ADR-006 (backend singular `quiz` wins; frontend aligned;
+no invented defaults).
 
 ## Risks
 
@@ -604,6 +735,6 @@ via forward migration; no field inventions, no transactions).
 
 ## Next Allowed Action
 
-Phase 6 gate PASSED (reviewer PASS 2026-09-24). STOP. Await explicit
-instruction to begin Phase 7 (Frontend correctness and integration). Do not
-start Phase 7 automatically.
+Phase 7 gate PASSED (reviewer PASS 2026-09-24). STOP. Await explicit
+instruction to begin Phase 8 (PWA). Do not
+start Phase 8 automatically.

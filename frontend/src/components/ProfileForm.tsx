@@ -9,7 +9,6 @@ interface ProfileFormProps {
 
 export interface ProfileFormData {
   name: string;
-  email: string;
   bio: string;
 }
 
@@ -17,7 +16,6 @@ export interface ProfileFormData {
 const ProfileForm: React.FC<ProfileFormProps> = memo(({ user, onSubmit, onCancel }) => {
   const [formData, setFormData] = useState<ProfileFormData>({
     name: user?.name || '',
-    email: user?.email || '',
     bio: user?.bio || '',
   });
 

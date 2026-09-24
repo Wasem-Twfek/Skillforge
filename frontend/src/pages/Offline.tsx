@@ -34,7 +34,7 @@ const Offline: React.FC = () => {
     <div className="flex flex-col items-center justify-center min-h-screen p-6 bg-gray-50">
       <div className="w-full max-w-md p-8 space-y-8 bg-white rounded-lg shadow-md">
         <div className="text-center">
-          <h1 className="text-2xl font-bold text-gray-900">You're Offline</h1>
+          <h1 className="text-2xl font-bold text-gray-900">You&apos;re Offline</h1>
           <div className="mt-2">
             <svg 
               className="w-16 h-16 mx-auto text-blue-500" 
@@ -52,7 +52,7 @@ const Offline: React.FC = () => {
             </svg>
           </div>
           <p className="mt-4 text-gray-600">
-            It looks like you're currently offline. Don't worry - you can still access your previously viewed content.
+            It looks like you&apos;re currently offline. Don&apos;t worry - you can still access your previously viewed content.
           </p>
         </div>
 
@@ -74,7 +74,7 @@ const Offline: React.FC = () => {
             </ul>
           ) : (
             <p className="mt-3 text-sm text-gray-500">
-              No content available offline. When you're back online, browse some courses to make them available offline.
+              No content available offline. When you&apos;re back online, browse some courses to make them available offline.
             </p>
           )}
         </div>

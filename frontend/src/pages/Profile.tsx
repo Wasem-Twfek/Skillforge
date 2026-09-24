@@ -31,6 +31,25 @@ const Profile: React.FC = () => {
     setIsEditing(true);
   }, []);
 
+  // This hook must run unconditionally on every render (before the early
+  // returns below) so hook order stays stable across loading states.
+  const {
+    inProgressCourses,
+    completedCourses,
+    notStartedCourses,
+    totalProgress
+  } = useMemo(() => {
+    const courseArray: CourseState[] = Array.isArray(userCourses) ? userCourses : [];
+    return {
+      courses: courseArray,
+      inProgressCourses: courseArray.filter((course) => course.progress > 0 && course.progress < 100),
+      completedCourses: courseArray.filter((course) => course.progress === 100),
+      notStartedCourses: courseArray.filter((course) => course.progress === 0),
+      totalProgress: courseArray.length ?
+        courseArray.reduce((acc, course) => acc + course.progress, 0) / courseArray.length : 0
+    };
+  }, [userCourses]);
+
   if (!user) {
     return (
       <div className="container mx-auto px-4 py-8 bg-white dark:bg-gray-900 transition-colors duration-300">
@@ -65,24 +84,6 @@ const Profile: React.FC = () => {
       </div>
     );
   }
-
-  // Memoize course data to prevent unnecessary recalculations
-  const {
-    inProgressCourses,
-    completedCourses,
-    notStartedCourses,
-    totalProgress
-  } = useMemo(() => {
-    const courseArray: CourseState[] = Array.isArray(userCourses) ? userCourses : [];
-    return {
-      courses: courseArray,
-      inProgressCourses: courseArray.filter((course) => course.progress > 0 && course.progress < 100),
-      completedCourses: courseArray.filter((course) => course.progress === 100),
-      notStartedCourses: courseArray.filter((course) => course.progress === 0),
-      totalProgress: courseArray.length ? 
-        courseArray.reduce((acc, course) => acc + course.progress, 0) / courseArray.length : 0
-    };
-  }, [userCourses]);
 
   return (
     <div className="container mx-auto px-4 py-8 bg-white dark:bg-gray-900 transition-colors duration-300">

@@ -40,7 +40,7 @@ stay aligned with the repository.
 | D-003 | JWT/token storage strategy if Phase 1 evidence requires change | 1/5 | decided (ADR-004: keep `localStorage`) |
 | D-004 | Redis: keep declared-but-unused, use it, or remove from compose/docs | 3 | open |
 | D-005 | `/api/auth/*` prefix convention (nginx rewrite vs backend-mounted routes) | 4 | decided (ADR-002) |
-| D-006 | Frontend/backend response-shape alignment for lessons/quizzes | 4/7 | open |
+| D-006 | Frontend/backend response-shape alignment for lessons/quizzes | 4/7 | decided (ADR-006: backend singular `quiz` wins; frontend aligned) |
 | D-007 | Dependency major-upgrade policy (vite/vitest/prisma/express majors) | 11 | open |
 | D-008 | Seed idempotency approach (upsert pattern exists for instructor) | 6 | decided (ADR-005) |
 
@@ -150,6 +150,28 @@ Evidence: `skillforge-backend/prisma/seed.ts`,
 `skillforge-backend/prisma/migrations/20260924000000_add_lookup_indexes/migration.sql`,
 `skillforge-backend/src/routes/courses.ts` (query evidence), Phase 6
 verification (`prisma validate`, `generate`, `tsc`, `jest`, reviewer PASS).
+
+## ADR-006 (2026-09-24) — Backend singular `quiz` is the authoritative quiz shape; frontend aligns
+Status: Accepted
+Context: Phase 7 proved the backend `Quiz.lessonId` is `@unique` (one-to-one)
+and lesson/course responses embed singular nullable `quiz`, while
+`frontend/src/services/lessonService.ts` typed `Lesson.quizzes: Quiz[]`
+(array) that no backend response ever produces and no component ever reads.
+D-006 stayed open since Phase 4.
+Decision: The backend shape wins (no schema or API change). Frontend uses
+singular `quiz` everywhere (`lessonService.Lesson.quiz?: Quiz | null`,
+`types/course.ts` unchanged-singular, `CourseDetail` reads
+`lesson?.quiz?.questions`); the dead array-typed field and the dead,
+request-mismatched `submitQuizAttempt` (omitted backend-required
+`userId`/`score`, zero callers) were removed. Commerce/engagement fields the
+API never returns (`rating/reviews/students/price/tags/duration`, nullable
+`avatar`/`bio`) became optional in `types/course.ts` with guarded readers —
+no invented defaults. D-006 closed.
+Evidence: `skillforge-backend/prisma/schema.prisma` (`Quiz.lessonId
+@unique`), `src/routes/courses.ts` (`quiz: true` include),
+`frontend/src/services/lessonService.ts`, `frontend/src/types/course.ts`,
+`frontend/src/pages/CourseDetail.tsx`, Phase 7 verification (`tsc` app+node
+exit 0, reviewer PASS).
 
 When a decision is made, append an entry:
 

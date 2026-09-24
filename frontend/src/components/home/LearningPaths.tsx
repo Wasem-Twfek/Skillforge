@@ -112,7 +112,7 @@ const LearningPaths = () => {
                 
                 {/* Skills tags */}
                 <div className="mb-6">
-                  <div className="text-sm text-gray-500 dark:text-gray-400 mb-2">Skills you'll learn:</div>
+                  <div className="text-sm text-gray-500 dark:text-gray-400 mb-2">Skills you&apos;ll learn:</div>
                   <div className="flex flex-wrap gap-2">
                     {path.skills.map((skill, i) => (
                       <span 

@@ -13,7 +13,7 @@ const FeaturedCourse = () => {
     // In a real app, this would be an API call to get the featured course
     // For now, we'll just get the highest-rated course from our mock data
     const topRatedCourse = [...mockCourses]
-      .sort((a, b) => b.rating - a.rating)
+      .sort((a, b) => (b.rating ?? 0) - (a.rating ?? 0))
       .shift();
     
     // Simulate API loading
@@ -36,7 +36,7 @@ const FeaturedCourse = () => {
   }
 
   // Calculate total course duration
-  const totalDuration = featuredCourse.lessons.reduce((total, lesson) => total + lesson.duration, 0);
+  const totalDuration = featuredCourse.lessons.reduce((total, lesson) => total + (lesson.duration ?? 0), 0);
   const hours = Math.floor(totalDuration / 60);
   const minutes = totalDuration % 60;
 
@@ -86,7 +86,7 @@ const FeaturedCourse = () => {
             </div>
             <div className="flex items-center">
               <Users className="w-4 h-4 mr-1" />
-              <span>{featuredCourse.students.toLocaleString()} students</span>
+              <span>{(featuredCourse.students ?? 0).toLocaleString()} students</span>
             </div>
             <div className="flex items-center">
               <Clock className="w-4 h-4 mr-1" />
@@ -105,7 +105,7 @@ const FeaturedCourse = () => {
           <div className="space-y-3">
             <h4 className="text-lg font-semibold text-gray-900 dark:text-white flex items-center">
               <BookOpen className="w-5 h-5 mr-2 text-primary-500" />
-              What you'll learn
+              What you&apos;ll learn
             </h4>
             <ul className="space-y-2">
               {['Master key concepts through bite-sized lessons', 

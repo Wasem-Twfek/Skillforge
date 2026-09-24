@@ -3,7 +3,7 @@ import axios from 'axios';
 // Fix: Use Vite's import.meta.env for environment variables.
 // Nullish (not ||): a production build bakes an empty string, which must be
 // preserved so requests stay relative. Only undefined/null fall back to dev.
-const API_URL = (import.meta as any).env?.VITE_API_URL ?? 'http://localhost:3001';
+const API_URL = import.meta.env?.VITE_API_URL ?? 'http://localhost:3001';
 
 const axiosInstance = axios.create({
   baseURL: API_URL,

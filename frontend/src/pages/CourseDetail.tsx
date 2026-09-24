@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useCourse, useLessonsByCourse } from '../hooks/useCourses';
+import { courseService } from '../services/courseService';
 import Quiz from '../components/quiz/Quiz';
 
 const CourseDetail: React.FC = () => {
@@ -8,6 +9,9 @@ const CourseDetail: React.FC = () => {
   const navigate = useNavigate();
   const [selectedLesson, setSelectedLesson] = useState<string | null>(null);
   const [showQuiz, setShowQuiz] = useState(false);
+  const [isEnrolling, setIsEnrolling] = useState(false);
+  const [isEnrolled, setIsEnrolled] = useState(false);
+  const [enrollError, setEnrollError] = useState<string | null>(null);
 
   const { data: course, isLoading: isLoadingCourse } = useCourse(id || '');
   const { data: lessons, isLoading: isLoadingLessons } = useLessonsByCourse(id || '');
@@ -51,9 +55,30 @@ const CourseDetail: React.FC = () => {
     );
   }
 
-  const handleEnroll = () => {
-    // TODO: Implement enrollment logic
-    console.log('Enrolling in course:', course.id);
+  const handleEnroll = async () => {
+    if (!id || isEnrolling || isEnrolled) {
+      return;
+    }
+    setIsEnrolling(true);
+    setEnrollError(null);
+    try {
+      await courseService.enrollInCourse(id);
+      setIsEnrolled(true);
+    } catch (err: unknown) {
+      // The backend answers 400 { error: 'Already enrolled in this course' }
+      // when the enrollment exists; treat that as enrolled, not as failure.
+      const backendError =
+        typeof err === 'object' && err !== null && 'response' in err
+          ? (err as { response?: { status?: number; data?: { error?: string } } }).response
+          : undefined;
+      if (backendError?.status === 400 && backendError?.data?.error === 'Already enrolled in this course') {
+        setIsEnrolled(true);
+      } else {
+        setEnrollError(backendError?.data?.error || 'Failed to enroll. Please try again.');
+      }
+    } finally {
+      setIsEnrolling(false);
+    }
   };
 
   const handleQuizComplete = (score: number, total: number) => {
@@ -67,11 +92,13 @@ const CourseDetail: React.FC = () => {
         <div className="md:col-span-2">
           <h1 className="text-3xl font-bold mb-4">{course.title}</h1>
           <div className="flex items-center mb-4">
-            <img
-              src={course.instructor.avatar}
-              alt={course.instructor.name}
-              className="w-10 h-10 rounded-full mr-3"
-            />
+            {course.instructor.avatar ? (
+              <img
+                src={course.instructor.avatar}
+                alt={course.instructor.name}
+                className="w-10 h-10 rounded-full mr-3"
+              />
+            ) : null}
             <div>
               <p className="font-medium">{course.instructor.name}</p>
               <p className="text-sm text-gray-500">{course.instructor.bio}</p>
@@ -103,7 +130,7 @@ const CourseDetail: React.FC = () => {
                       <p className="text-sm text-gray-500">{lesson.description}</p>
                     </div>
                     <div className="text-sm text-gray-500">
-                      {lesson.duration} min
+                      {lesson.duration !== undefined ? `${lesson.duration} min` : null}
                     </div>
                   </div>
                 </div>
@@ -114,22 +141,35 @@ const CourseDetail: React.FC = () => {
 
         <div className="md:col-span-1">
           <div className="bg-white rounded-lg shadow-md p-6 sticky top-4">
-            <div className="mb-4">
-              <div className="text-3xl font-bold text-blue-600 mb-2">
-                ${course.price}
+            {/* The API never returns commerce/engagement fields (price,
+                rating, students); render them only when present so API-fed
+                courses never show "$undefined" placeholders. */}
+            {course.price !== undefined ? (
+              <div className="mb-4">
+                <div className="text-3xl font-bold text-blue-600 mb-2">
+                  ${course.price}
+                </div>
+                <div className="flex items-center text-sm text-gray-500 mb-4">
+                  {course.rating !== undefined ? (
+                    <span className="mr-4">★ {course.rating}</span>
+                  ) : null}
+                  {course.students !== undefined ? (
+                    <span>{course.students} students</span>
+                  ) : null}
+                </div>
               </div>
-              <div className="flex items-center text-sm text-gray-500 mb-4">
-                <span className="mr-4">★ {course.rating}</span>
-                <span>{course.students} students</span>
-              </div>
-            </div>
+            ) : null}
 
             <button
               onClick={handleEnroll}
-              className="w-full bg-blue-500 text-white py-2 px-4 rounded-lg hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+              disabled={isEnrolling || isEnrolled}
+              className="w-full bg-blue-500 text-white py-2 px-4 rounded-lg hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-70"
             >
-              Enroll Now
+              {isEnrolled ? 'Enrolled' : isEnrolling ? 'Enrolling...' : 'Enroll Now'}
             </button>
+            {enrollError ? (
+              <p className="mt-2 text-sm text-red-600">{enrollError}</p>
+            ) : null}
 
             <div className="mt-6">
               <h3 className="font-medium mb-2">This course includes:</h3>

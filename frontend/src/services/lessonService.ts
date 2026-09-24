@@ -1,16 +1,13 @@
-import axios from 'axios';
 import axiosInstance from '../lib/axios';
-
-// Origin-only base (nullish keeps a production empty string relative);
-// the /api prefix lives on the paths, matching src/lib/axios.ts.
-const API_URL = import.meta.env.VITE_API_URL ?? 'http://localhost:3001';
 
 export interface Lesson {
   id: string;
   title: string;
   description: string;
   content: string;
-  quizzes: Quiz[];
+  // The backend Lesson <-> Quiz relation is one-to-one (Quiz.lessonId is
+  // @unique) and the API embeds it as singular `quiz`, not `quizzes[]`.
+  quiz?: Quiz | null;
   progress?: number;
   imageUrl?: string;
 }
@@ -24,15 +21,9 @@ export interface Quiz {
 
 export interface Question {
   id: string;
-  text: string;
+  question: string;
   options: string[];
-  correctAnswer: string;
-}
-
-export interface QuizAttempt {
-  id: string;
-  score: number;
-  answers: string[];
+  correctAnswer: number;
 }
 
 const lessonService = {
@@ -45,19 +36,6 @@ const lessonService = {
     const response = await axiosInstance.get(`/api/lessons/${id}`);
     return response.data;
   },
-
-  async submitQuizAttempt(quizId: string, answers: string[], token: string): Promise<QuizAttempt> {
-    const response = await axios.post(
-      `${API_URL}/api/quizzes/${quizId}/attempt`,
-      { answers },
-      {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      }
-    );
-    return response.data;
-  }
 };
 
 export default lessonService; 

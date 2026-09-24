@@ -147,7 +147,7 @@ const Testimonials = () => {
               </div>
               
               <blockquote className="text-gray-700 dark:text-gray-300 italic mb-4">
-                "{testimonial.content}"
+                &quot;{testimonial.content}&quot;
               </blockquote>
             </motion.div>
           ))}
@@ -212,7 +212,7 @@ const Testimonials = () => {
             </div>
             
             <blockquote className="text-gray-700 dark:text-gray-300 text-sm italic">
-              "{testimonials[activeIndex].content}"
+              &quot;{testimonials[activeIndex].content}&quot;
             </blockquote>
           </motion.div>
           
