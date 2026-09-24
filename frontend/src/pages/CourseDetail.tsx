@@ -65,8 +65,6 @@ const CourseDetail: React.FC = () => {
       await courseService.enrollInCourse(id);
       setIsEnrolled(true);
     } catch (err: unknown) {
-      // The backend answers 400 { error: 'Already enrolled in this course' }
-      // when the enrollment exists; treat that as enrolled, not as failure.
       const backendError =
         typeof err === 'object' && err !== null && 'response' in err
           ? (err as { response?: { status?: number; data?: { error?: string } } }).response
@@ -81,8 +79,7 @@ const CourseDetail: React.FC = () => {
     }
   };
 
-  const handleQuizComplete = (score: number, total: number) => {
-    console.log(`Quiz completed with score: ${score}/${total}`);
+  const handleQuizComplete = () => {
     setShowQuiz(false);
   };
 
@@ -140,11 +137,7 @@ const CourseDetail: React.FC = () => {
         </div>
 
         <div className="md:col-span-1">
-          <div className="bg-white rounded-lg shadow-md p-6 sticky top-4">
-            {/* The API never returns commerce/engagement fields (price,
-                rating, students); render them only when present so API-fed
-                courses never show "$undefined" placeholders. */}
-            {course.price !== undefined ? (
+          <div className="bg-white rounded-lg shadow-md p-6 sticky top-4">{course.price !== undefined ? (
               <div className="mb-4">
                 <div className="text-3xl font-bold text-blue-600 mb-2">
                   ${course.price}
@@ -184,13 +177,13 @@ const CourseDetail: React.FC = () => {
                   <svg className="w-4 h-4 mr-2 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                   </svg>
-                  Lifetime access
+                  Progress tracking
                 </li>
                 <li className="flex items-center">
                   <svg className="w-4 h-4 mr-2 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                   </svg>
-                  Certificate of completion
+                  Quizzes where available
                 </li>
               </ul>
             </div>

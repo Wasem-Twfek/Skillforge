@@ -1,7 +1,7 @@
 {
   "name": "skillforge-backend",
   "version": "1.0.0",
-  "description": "Backend for SkillForge learning platform",
+  "description": "Express and Prisma backend for the SkillForge learning platform",
   "main": "dist/server.js",
   "scripts": {
     "start": "node dist/server.js",
@@ -11,11 +11,17 @@
     "prisma:migrate": "prisma migrate dev",
     "prisma:studio": "prisma studio",
     "prisma:seed": "ts-node prisma/seed.ts",
-    "migrate": "ts-node src/scripts/migrate.ts",
     "test": "jest"
   },
-  "keywords": [],
-  "author": "",
+  "keywords": [
+    "microlearning",
+    "education",
+    "express",
+    "typescript",
+    "prisma",
+    "postgresql"
+  ],
+  "author": "Wasem Twfek",
   "license": "ISC",
   "dependencies": {
     "@prisma/client": "^6.8.2",

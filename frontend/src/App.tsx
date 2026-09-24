@@ -4,15 +4,9 @@ import { AuthProvider } from './contexts/AuthContext';
 import { ThemeProvider } from './contexts/ThemeContext';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { trackRouteChange } from './utils/performanceMonitor';
-
-// Layout components
 import MainLayout from './layouts/MainLayout';
-
-// Lazy-loaded components
 import PageLoader from './components/PageLoader';
 import ProtectedRoute from './components/ProtectedRoute';
-
-// Performance optimized query client
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
@@ -20,15 +14,12 @@ const queryClient = new QueryClient({
       gcTime: 5 * 60 * 1000, // 5 minutes (previously cacheTime)
       retry: 1,
       refetchOnWindowFocus: false
-      // suspense option removed as it's not needed
     },
   },
 });
 
 import { AnimatePresence } from 'framer-motion';
 import PageTransition from './components/PageTransition';
-
-// Lazy-loaded Pages
 const Home = lazy(() => import('./pages/Home'));
 const LessonDetail = lazy(() => import('./pages/LessonDetail'));
 const Profile = lazy(() => import('./pages/Profile'));
@@ -41,24 +32,17 @@ const Dashboard = lazy(() => import('./pages/Dashboard'));
 const CourseDetail = lazy(() => import('./pages/CourseDetail'));
 const Courses = lazy(() => import('./pages/Courses'));
 const Offline = lazy(() => import('./pages/Offline'));
-
-// Components
 import PWAUpdatePrompt from './components/PWAUpdatePrompt';
-
-// Route change tracker component
 const RouteChangeTracker: React.FC = () => {
   const location = useLocation();
   
   useEffect(() => {
     const startTime = performance.now();
-    // Track route change performance
     trackRouteChange(location.pathname, startTime);
   }, [location]);
   
   return null;
 };
-
-// AnimatedRoutes component to handle route transitions
 const AnimatedRoutes = () => {
   const location = useLocation();
   
@@ -147,10 +131,7 @@ const AnimatedRoutes = () => {
           <Suspense fallback={<PageLoader />}>
             <PageTransition type="fade"><AuthCallback /></PageTransition>
           </Suspense>
-        } />
-        {/* Additional test route */}
-        <Route path="/auth-test" element={<Navigate to="/auth-test.html" replace />} />
-      </Routes>
+        } /></Routes>
     </AnimatePresence>
   );
 };

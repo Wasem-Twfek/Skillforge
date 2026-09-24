@@ -11,10 +11,7 @@ const PopularSkills = () => {
   const [popularCourses, setPopularCourses] = useState<Course[]>([]);
   const carouselRef = useRef<HTMLDivElement>(null);
   
-  useEffect(() => {
-    // In a real app, we might fetch this from an API
-    // For now, let's filter the top 8 courses by students count
-    const topCourses = [...mockCourses]
+  useEffect(() => {    const topCourses = [...mockCourses]
       .sort((a, b) => (b.students ?? 0) - (a.students ?? 0))
       .slice(0, 8);
     
@@ -44,16 +41,14 @@ const PopularSkills = () => {
           viewport={{ once: true }}
         >
           <h2 className="text-3xl font-bold text-gray-900 dark:text-white sm:text-4xl mb-4">
-            Popular Skills to Master
+            Browse the course library
           </h2>
           <p className="text-xl text-gray-600 dark:text-gray-300 max-w-3xl mx-auto">
-            Explore the most in-demand skills being learned by thousands of professionals worldwide
+            Explore the current course library and jump into a topic you want to study.
           </p>
         </motion.div>
         
-        <div className="relative">
-          {/* Navigation buttons */}
-          <div className="absolute -left-4 top-1/2 transform -translate-y-1/2 z-10">
+        <div className="relative"><div className="absolute -left-4 top-1/2 transform -translate-y-1/2 z-10">
             <button 
               onClick={scrollLeft}
               className="w-10 h-10 rounded-full bg-white dark:bg-gray-800 shadow-lg flex items-center justify-center hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
@@ -71,10 +66,7 @@ const PopularSkills = () => {
             >
               <ChevronRight className="w-6 h-6 text-gray-700 dark:text-gray-200" />
             </button>
-          </div>
-          
-          {/* Skills carousel */}
-          <motion.div 
+          </div><motion.div 
             className="overflow-x-auto hide-scrollbar"
             ref={carouselRef}
             initial={{ opacity: 0 }}
