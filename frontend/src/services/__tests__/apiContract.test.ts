@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import axiosInstance from '../../lib/axios';
 import { courseService } from '../courseService';
 import lessonService from '../lessonService';
+import { quizService } from '../quizService';
 
 // Contract regression tests: frontend service calls must match the backend
 // routes exactly (Phase 4), use the singular `quiz` shape (Phase 7 / ADR-006),
@@ -58,6 +59,30 @@ describe('API contract', () => {
     });
     expect(result.progress).toBe(0);
     expect(Number.isNaN(result.progress)).toBe(false);
+  });
+
+  it('submits quiz answers without sending a client-supplied score or user id', async () => {
+    const postSpy = vi.spyOn(axiosInstance, 'post').mockResolvedValue({
+      data: {
+        id: 'attempt-1',
+        quizId: 'quiz-1',
+        score: 2,
+        total: 2,
+        results: [
+          { selectedAnswer: 1, correctAnswer: 1, isCorrect: true },
+          { selectedAnswer: 0, correctAnswer: 0, isCorrect: true },
+        ],
+        createdAt: '2026-09-24T12:00:00Z',
+      },
+    });
+
+    const result = await quizService.submitAttempt('quiz-1', [1, 0]);
+
+    expect(postSpy).toHaveBeenCalledWith('/api/quizzes/quiz-1/attempt', {
+      answers: [1, 0],
+    });
+    expect(result.score).toBe(2);
+    expect(result.total).toBe(2);
   });
 
   it('reads the singular quiz shape on lessons (no quizzes array)', async () => {
