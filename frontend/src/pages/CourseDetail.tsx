@@ -77,10 +77,6 @@ const CourseDetail: React.FC = () => {
     setShowQuiz(hasQuiz);
   };
 
-  const handleQuizComplete = () => {
-    setShowQuiz(false);
-  };
-
   const selectedQuiz = lessons?.find((lesson) => lesson.id === selectedLesson)?.quiz;
 
   return (
@@ -119,7 +115,6 @@ const CourseDetail: React.FC = () => {
             <Quiz
               quizId={selectedQuiz.id || ''}
               questions={selectedQuiz.questions}
-              onComplete={handleQuizComplete}
             />
           ) : (
             <section>
