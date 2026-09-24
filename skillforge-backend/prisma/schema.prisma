@@ -6,6 +6,11 @@
 
 generator client {
   provider = "prisma-client-js"
+  // Explicit output silences the Prisma 6 "no output path" deprecation
+  // warning (breaks in Prisma 7). This is the vendor-suggested custom-output
+  // location; imports from `@prisma/client` keep working via automatic
+  // forwarding, so application code is unchanged.
+  output = "../node_modules/.prisma/client"
 }
 
 datasource db {

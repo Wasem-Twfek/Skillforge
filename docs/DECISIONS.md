@@ -41,7 +41,7 @@ stay aligned with the repository.
 | D-004 | Redis: keep declared-but-unused, use it, or remove from compose/docs | 3 | open |
 | D-005 | `/api/auth/*` prefix convention (nginx rewrite vs backend-mounted routes) | 4 | decided (ADR-002) |
 | D-006 | Frontend/backend response-shape alignment for lessons/quizzes | 4/7 | decided (ADR-006: backend singular `quiz` wins; frontend aligned) |
-| D-007 | Dependency major-upgrade policy (vite/vitest/prisma/express majors) | 11 | open |
+| D-007 | Dependency major-upgrade policy (vite/vitest/prisma/express majors) | 11 | decided (ADR-008: no majors in Phase 11; same-major only) |
 | D-008 | Seed idempotency approach (upsert pattern exists for instructor) | 6 | decided (ADR-005) |
 
 ## ADR format (use for every decision made during the project)
@@ -200,6 +200,30 @@ Evidence: `frontend/vite.config.ts` (PWA block), `frontend/index.html`,
 deleted `frontend/public/manifest.json` +
 `frontend/src/pwa/registerSW.ts`, `scripts/create-pwa-icons.cjs`, Phase 8
 build/precache/browser verification.
+
+## ADR-008 (2026-09-24) — No dependency major upgrades in Phase 11; same-major remediation only
+Status: Accepted
+Context: Phase 11 proved the audit findings split into two groups: fixable
+within the current majors (axios 1.x, express 4.x, react-router-dom 6.x,
+postcss 8.x, vite 5.x, sharp 0.x, jest/ts-jest 29.x, plus in-range transitive
+bumps) and fixable only via majors (vitest 0.34→3+/5, bcrypt 5→6 for the tar
+chain, react-router-dom 6→7, eslint 8→9 / typescript-eslint 6→8, vite 5→6+ for
+esbuild, gaxios 6→7+ for uuid, sharp 0.34→0.35 was the exception — a minor
+bump whose engines (`node>=20.9.0`) both runtimes satisfy, verified by build
++ icon + Docker-image evidence). D-007 stayed open since Phase 0.
+Decision: No major version changes in Phase 11. Remediation is same-major
+patches/minors plus removal of proven-unused packages only. Every remaining
+finding is recorded with its major-only remediation and deferral rationale in
+`docs/PROJECT_STATE.md` (Phase 11 section). A future major upgrade requires
+its own evidence (real problem, no same-major fix, understood compat impact,
+full re-verification) before implementation. D-007 closed.
+Consequences: Audit counts fall without destabilizing the verified stack
+(react 18, vite 5, vitest 0.34, prisma 6, typescript 5, express 4, axios 1.x
+all kept); vitest-UI-RCE, tar-via-bcrypt, react-router-6, eslint-8, and
+gaxios-uuid advisories remain documented-but-open by decision, not by
+oversight.
+Evidence: `frontend/package.json`, `skillforge-backend/package.json` (all
+ranges same-major), Phase 11 audit before/after, reviewer PASS.
 
 When a decision is made, append an entry:
 

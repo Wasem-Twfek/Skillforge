@@ -1,9 +1,9 @@
 # PROJECT_STATE.md — SkillForge Persistent State
 
-CURRENT_PHASE: 10 (Docker/Nginx)
-CURRENT_STATUS: PHASE 10 COMPLETE — reviewer PASS; STOP, do not start Phase 11 without explicit instruction
+CURRENT_PHASE: 11 (Dependency/security maintenance)
+CURRENT_STATUS: PHASE 11 COMPLETE — reviewer PASS; STOP, do not start Phase 12 without explicit instruction
 LAST_VERIFIED: 2026-09-24
-LAST_COMMIT: (Phase 10 commit) "Stabilize containerized deployment"
+LAST_COMMIT: (Phase 11 commit) "Update dependencies and security fixes"
 
 ---
 
@@ -237,6 +237,91 @@ that was connected to nothing. Then STOP and await approval for Phase 8.
   set — ADR-001 works in-container). No secret printed or committed.
 - Test users created via the register flow remain in the local dev DB (plus
   the seed row); local-only, no action needed.
+
+## Completed Work (Phase 11)
+
+- Baseline (re-run, not assumed): FE 37 vulns (3 low, 6 moderate, 26 high,
+  2 critical), prod-only 6; BE 22 vulns (4/5/11/2), prod-only 17. Counts are
+  point-in-time: the registry advisory DB updated mid-session (new
+  react-router-6 and glob-CLI advisories appeared), so exact advisory text is
+  inherently a snapshot — recorded as such.
+- Removals (zero code references proven by grep over src/config/scripts):
+  FE `date-fns`, `zustand` (stores deleted in Phase 7), `@types/react-router-
+  dom` (v5 stub; app uses v6 with bundled types); BE `express-session` (sole
+  user was dead `src/app.ts`, deleted Phase 3), `@types/express-session`,
+  `@types/axios` (axios 1.x bundles its own types). tsc+tests+builds green
+  after removal. Kept deliberately: `ioredis` (only the test-setup mock
+  references it; D-004 still open and compose still provides redis — removal
+  would prejudge that decision).
+- Same-major updates (no `npm audit fix --force`, no majors): axios
+  1.9.0→1.20.0 (both apps; fixes axios advisory family since range ends at
+  1.17.0, plus form-data/follow-redirects transitives), express 4.21.2→4.22.3
+  (qs/body-parser/path-to-regexp chain gone), react-router-dom 6.30.0→6.30.6,
+  postcss 8.5.3→8.5.28, vite 5.4.19→5.4.21, vite-plugin-pwa 1.0.0→1.3.0
+  (serialize-javascript/workbox RCE chain gone; precache 34→41 entries as the
+  new plugin globs committed generator scripts — build green, no warning),
+  sharp 0.34.1→0.35.4 (engines `node>=20.9.0` satisfied locally 22.x and in
+  Docker node:20; sharp advisory gone; icons regenerate via real sharp path),
+  ts-jest→29.4.13, sucrase→3.35.1 (nested glob gone),
+  postcss-selector-parser→6.1.4, yaml→2.9.1, BE diff→4.0.4, BE jws→3.2.3
+  (jsonwebtoken HMAC chain fixed; gal's nested copy resolved by re-resolve).
+- Coverage provider: `@vitest/coverage-v8@0.34.6` installed (exact match to
+  vitest 0.34.6, no Vitest upgrade). `npm run test:coverage` now exits 0
+  (was `MISSING DEP` in Phase 9). No thresholds invented.
+- Prisma warning RESOLVED: generator gained explicit
+  `output = "../node_modules/.prisma/client"` (the default-path spelling was
+  rejected by Prisma 6.7 as dangerous; this is the vendor-suggested
+  alternative with automatic `@prisma/client` forwarding). Deprecation warning
+  gone; generate→tsc→build→jest→real-DB boot (`healthy`) all pass, so codegen
+  behavior is proven unchanged.
+- Final: FE 22 vulns (2/5/13/2), prod-only 2 moderate (`react-router` 6.x —
+  fix requires v7 major); BE 11 (1/2/7/1), prod-only 7 (tar critical +
+  minimatch/brace-expansion high are install-time-only via bcrypt pre-gyp;
+  uuid moderate via gaxios 6.x-max). `npm ci` clean both apps; both Docker
+  images rebuild exit 0 (build-only; running Phase 10 stack + DB untouched,
+  no secret needed or used). D-007 decided (ADR-008): no majors, documented
+  deferrals. Reviewer PASS.
+- Residuals: root `package.json` duplicates frontend deps (+depcheck/ts-prune)
+  with no evidenced workflow (Dockerfiles use the app dirs) — observed,
+  untouched, deferred (no owning phase; removal would be unproven cleanup).
+  All remaining advisories need majors or are unreachable dev/build/install-
+  time only — see classification below.
+
+## Verified Commands (Phase 11, actual output)
+
+| Command (workdir) | Result |
+|---|---|
+| `npm audit` / `--omit=dev` (frontend, before) | 37 (3/6/26/2); prod-only 6 |
+| `npm audit` / `--omit=dev` (backend, before) | 22 (4/5/11/2); prod-only 17 (2/5/8/2) |
+| `npm audit` / `--omit=dev` (frontend, after) | 22 (2/5/13/2); prod-only 2 moderate (`react-router`, v7-only) |
+| `npm audit` / `--omit=dev` (backend, after) | 11 (1/2/7/1); prod-only 7 (2 mod/4 high/1 crit: tar install-time, uuid gaxios-max) |
+| `npm ci` (both apps) | PASS — exit 0, lockfiles consistent |
+| `npm run build` (frontend: icons via sharp 0.35 + `tsc -b` + vite) | PASS — exit 0, precache 41 entries, no glob warning |
+| `npx tsc --noEmit` app+node (frontend) / tsconfig (backend) | PASS — exit 0 |
+| `npx eslint .` (frontend) | PASS — 0 errors, same 3 warnings |
+| `npx vitest run` / `npm run test:coverage` (frontend) | PASS — 4 files/22; coverage exits 0 |
+| `npx jest` (backend) | PASS — 3 suites/22 |
+| `npx prisma generate` (backend) | PASS — no deprecation warning → `node_modules/.prisma/client` |
+| `npx prisma validate` / boot vs real compose DB | valid; `healthy` (client proven live) |
+| `docker compose build` (both images, build-only) | PASS — exit 0; running stack + DB untouched |
+| `curl :80/health` + `compose ps` (read-only) | 200 healthy; all 4 containers as Phase 10 left them |
+| `git diff --check` | clean (exit 0) |
+| Reviewer (`general` subagent per `.opencode/agents/reviewer.md`) | PASS (no-force/majors, removals, versions, audits, lockfiles, builds, tests, prisma, coverage, scope, secrets re-verified) |
+
+### Phase 11 vulnerability classification (final audit state)
+
+| Package | Severity | Direct/Transitive | Runtime relevant | Affected path | Action taken |
+|---|---|---|---|---|---|
+| axios (both apps) | high | direct | yes (FE interceptor, BE OAuth exchange) | HTTP client | PATCHED 1.9.0→1.20.0 |
+| form-data, follow-redirects, qs, body-parser, path-to-regexp, on-headers, jws-3.x, diff, postcss-selector-parser, yaml-2.9, sucrase-glob | high/mod | transitive | no (or via fixed parents) | axios/express/jest/tailwind chains | PATCHED via parent same-major updates/removals |
+| express, react-router-dom, postcss, vite, vite-plugin-pwa/workbox, sharp, ts-jest, google-auth-library | high | direct | yes | framework/build/image | PATCHED same-major (sharp 0.35 minor: engines verified) |
+| vitest (+coverage-v8 chain) | critical | direct (dev) | no (`--ui` never used) | test runner UI server | DEFER — major-only (3.x/5.x); dev-only, UI server never started |
+| tar via bcrypt→node-pre-gyp (+minimatch/brace-expansion same chain) | critical/high | transitive | no (install-time prebuilt download only) | bcrypt install | DEFER — major-only (bcrypt 6) |
+| react-router 6.x | moderate | transitive→direct | yes (SPA links) | client router | DEFER — fix requires v7 major (D-007/ADR-008) |
+| uuid via gaxios 6.x-max | moderate | transitive | marginal (ID gen; bug needs caller buf) | Google client | DEFER — major-only (gaxios 7/8) |
+| eslint-8/minimatch, typescript-eslint-6, vite-5/esbuild, jsdom-ws, jest-istanbul js-yaml/picompatch/browserslist/babel, lodash, ajv, flatted, @babel/*, browserslist | high/mod/low | transitive (dev) | no (lint/test/build tooling) | dev toolchain | DEFER — major-only or no same-major fix; unreachable at runtime |
+| date-fns, zustand, @types/react-router-dom, express-session(+types), @types/axios | — | direct (unused) | no | nothing imports them | REMOVED with grep evidence |
+| ioredis | — | direct (unused in prod) | no | test mock only | KEPT — D-004 open, removal would prejudge it |
 
 ## Verified Commands (Phase 10, actual output)
 
@@ -760,6 +845,21 @@ Recorded but not re-run in this session (same environment, prior evidence):
 | `git diff --check` | clean (exit 0) |
 | Reviewer (`general` subagent per `.opencode/agents/reviewer.md`) | PASS (first run FAIL caught an untouched `/user` string mapping; fixed, re-verified, second run PASS) |
 
+## Files Changed in Current Phase (Phase 11)
+
+Modified: `frontend/package.json` + lock (3 removals, axios 1.20.0,
+rrd 6.30.6, postcss 8.5.28, vite 5.4.21, pwa 1.3.0, sharp 0.35.4,
+coverage-v8 0.34.6 added, sucrase/psp/yaml bumps),
+`skillforge-backend/package.json` + lock (3 removals, axios 1.20.0, express
+4.22.3, ts-jest 29.4.13, diff/jws bumps),
+`skillforge-backend/prisma/schema.prisma` (generator `output` line only).
+Regenerated (tracked build artifacts): `frontend/public/icons/*.png` (×5,
+sharp 0.35 output). Docs: `docs/PROJECT_STATE.md` (this file),
+`docs/PRODUCTION_PLAN.md` (Phase 11 marked COMPLETE), `docs/DECISIONS.md`
+(D-007 decided, ADR-008). No app source, auth-flow, schema-model, Docker,
+nginx, or test-logic changes. (`tsconfig.*.tsbuildinfo` churn reverted,
+uncommitted.)
+
 ## Files Changed in Current Phase (Phase 10)
 
 Modified: `frontend/Dockerfile` (placeholder-PNG block, `sed` build bypass,
@@ -1035,6 +1135,16 @@ Recorded for later phases; do not fix early.
 - Phase 11: `npm audit` findings above; dependency-outdated list recorded in
   prior audit (axios, prisma, vite, vitest, express, etc.) — upgrade only in
   this phase, coordinated.
+  → RESOLVED in Phase 11 (reviewer PASS 2026-09-24): FE 37→22, BE 22→11;
+  6 packages removed with zero-use evidence; 15+ same-major updates (axios
+  1.20, express 4.22.3, sharp 0.35.4, pwa 1.3.0…); coverage provider
+  installed (coverage runs); Prisma warning fixed via explicit output;
+  `npm ci` + both Docker images rebuild green; D-007 decided (ADR-008, no
+  majors). Residuals by decision: vitest-UI-RCE, tar-via-bcrypt,
+  react-router-6, eslint-8, gaxios-uuid and unreachable dev-tooling advisories
+  (all major-only or no-fix-available); root `package.json` duplication
+  observed-but-untouched; registry advisory counts are point-in-time
+  snapshots.
 
 ## Decisions Already Made
 
@@ -1071,10 +1181,11 @@ no API-response runtime caching; icon-generator dir/sharp fix).
 
 ## Next Allowed Action
 
-Phase 10 gate PASSED (reviewer PASS 2026-09-24). STOP. Await explicit
-instruction to begin Phase 11 (Dependency/security maintenance). Do not
-start Phase 11 automatically.
+Phase 11 gate PASSED (reviewer PASS 2026-09-24). STOP. Await explicit
+instruction to begin Phase 12 (End-to-end validation). Do not
+start Phase 12 automatically.
 The container stack is left RUNNING (postgres healthy, backend healthy,
-frontend up, redis up) with the fresh verified DB; ephemeral JWT_SECRET lives
-only in this session's shell env — a restart outside this shell needs it
-re-supplied (see `.env.example`).
+frontend up, redis up) with the verified DB; the Phase 10 JWT secret lives
+only in that session's shell env — a stack recreate outside it needs the
+secret re-supplied (see `.env.example`). Dependency rebuilds in Phase 11 were
+build-only; running containers were never restarted or recreated.

@@ -296,7 +296,7 @@ PHASE 10 GATE:
 
 ---
 
-## PHASE 11 — Dependency/security maintenance
+## PHASE 11 — Dependency/security maintenance (COMPLETE 2026-09-24, reviewer PASS)
 
 - Objective: address `npm audit` findings and outdated packages within the
   majors already in use, coordinating backend/frontend together; never
