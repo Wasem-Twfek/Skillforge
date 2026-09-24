@@ -37,21 +37,21 @@ JWT_SECRET=change-me-to-a-long-random-value-in-local-env
 GOOGLE_CLIENT_ID=
 GOOGLE_CLIENT_SECRET=
 GOOGLE_REDIRECT_URI=http://localhost:3001/auth/google/callback
-
-# Session Configuration (required if sessions are enabled)
-SESSION_SECRET=change-me-to-a-long-random-value-in-local-env
 ```
 
 > Security note: any credential previously committed to this repository must be
-> treated as compromised. Rotate the Google OAuth client secret, JWT secret,
-> and session secret in Google Cloud Console / your deployment environment.
+> treated as compromised. Rotate the Google OAuth client secret and JWT secret
+> in Google Cloud Console / your deployment environment.
 > Never commit real `.env` values — only `.env.example` placeholders.
 
-**Frontend (.env file in skillforge/):**
+**Frontend (`frontend/.env`, usually not needed):**
 
 ```bash
-# API URL (Backend Server URL)
-VITE_API_URL=http://localhost:3001
+# Leave VITE_API_URL EMPTY so API calls stay same-origin and resolve through
+# the Vite dev proxy (local) or Nginx (Docker). Setting an absolute backend
+# URL here (e.g. http://localhost:3001) bypasses the proxy and breaks requests
+# with CORS errors on non-default origins.
+VITE_API_URL=
 
 # Environment
 NODE_ENV=development
@@ -108,19 +108,19 @@ To test your OAuth configuration:
 
 ### Prerequisites
 
-- Node.js (v16+)
+- Node.js (v20+; matches the Docker images; verified locally on v22)
 - PostgreSQL database
 - Google Cloud Platform account with OAuth credentials
 
 ### Installation
 
 1. Clone the repository
-2. Install dependencies:
+2. Install dependencies (reproducible installs from the lockfiles):
    ```bash
-   cd skillforge
-   npm install
-   cd skillforge-backend
-   npm install
+   cd frontend
+   npm ci
+   cd ../skillforge-backend
+   npm ci
    ```
 3. Set up environment variables (see above)
 4. Run database migrations:
@@ -138,7 +138,7 @@ To test your OAuth configuration:
    ```
 2. Start the frontend:
    ```bash
-   cd skillforge
+   cd frontend
    npm run dev
    ```
 3. Open `http://localhost:3000` in your browser

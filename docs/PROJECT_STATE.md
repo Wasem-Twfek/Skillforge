@@ -1,11 +1,138 @@
 # PROJECT_STATE.md — SkillForge Persistent State
 
-CURRENT_PHASE: 12 (End-to-end validation)
-CURRENT_STATUS: PHASE 12 COMPLETE — reviewer PASS; STOP, do not start Phase 13 without explicit instruction
+CURRENT_PHASE: 13 (Final review)
+CURRENT_STATUS: PHASE 13 COMPLETE — final reviewer RELEASE READY (controlled release, conditions apply); project lifecycle FINISHED
 LAST_VERIFIED: 2026-09-24
-LAST_COMMIT: (Phase 12 commit) "Validate end-to-end user flows"
+LAST_COMMIT: (Phase 13 commit) "Prepare final production release"
 
 ---
+
+# Final Release Review (Phase 13)
+
+## Release Status
+
+RELEASE READY — controlled release of the email-authentication application
+on the verified Docker topology, subject to the conditions and residuals
+below. No known release-blocking defects. No absolute claims are made:
+not "fully secure", not "zero bugs", not "all environments".
+
+## Evidence Summary
+
+- Builds reproducible: `npm ci` clean both apps (Phase 11); frontend
+  `tsc -b` + vite build (precache 41, no warnings), backend `tsc`, both
+  Docker images build exit 0 (Phase 10/11/12).
+- Deployment verified: compose config exit 0; postgres healthy, backend
+  healthy (DB-checking `/health`), frontend up; Nginx proxies API/auth/
+  OAuth-callback; SPA fallback; PWA assets served (Phase 10, re-smoked
+  Phase 13: `/`, `/health`, `/manifest.webmanifest`, `/sw.js` all 200).
+- Auth verified: register/login/me/enroll/progress/logout/protected-redirect/
+  invalid-token recovery — via curl AND real-browser CDP journeys, twice
+  (Phases 10/12, re-smoked Phase 13 with persisted 33% progress).
+- OAuth boundaries verified: CSPRNG state, fail-closed compare, single-use
+  clear, 10-min cookie, `invalid_state`/`missing_code` handling, SW denylist
+  for `/auth/google*` (Phase 12). Live provider exchange NOT EXECUTED.
+- DB verified: both migrations apply in order on clean volumes; seed
+  idempotent (1/1/3); NaN guard unit-covered + live 33%; unique constraints
+  enforced (duplicate register/enroll return 409/400, observed live).
+- Tests meaningful and green: vitest 4 files/22, jest 3 suites/22 (Phase 9,
+  re-run green in Phases 10–13).
+
+## Release Blockers
+
+None. Every candidate analyzed was classified below threshold (evidence in
+phase sections): no reachable runtime exploit with a safe fix, no broken
+critical journey, no corrupt-data path, no secret exposure.
+
+## High-Risk Residuals
+
+- Historically committed credential material (initial git history) MUST be
+  rotated externally before any release that reuses those values; history is
+  kept by policy. Scans of the current tree are clean.
+- Seed carries a weak dev-only instructor password: NEVER seed production
+  (compose never seeds automatically — manual `prisma:seed` only).
+- Google login must not be advertised until a live provider exchange is
+  executed with real credentials (routing + failure paths verified only).
+- Host-published ports (80/3001/5432/6379) are local-dev convenience —
+  scope/firewall them for non-local deployments.
+
+## Non-Blocking Technical Debt
+
+- Remaining npm advisories (FE 22, BE 11): all require majors (vitest,
+  bcrypt/tar, react-router v7, eslint 9, gaxios/uuid, vite-5-max/esbuild) or
+  are unreachable dev/build/install-time issues (ADR-008; full table in the
+  Phase 11 section).
+- Root `package.json` duplicates frontend deps with no evidenced workflow
+  (no CI, no root install, Docker uses app dirs) — observed, untouched.
+- Redis runs in compose but backend code never imports it (D-004 open).
+- No rate limiting (needs a dependency decision); no CSP (blocked by the
+  inline-script OAuth page); JWT in `localStorage` by decision (ADR-004)
+  with 7-day expiry as contracted.
+- `oauth_state` Secure flag is production-only (localhost secure-context
+  reliance, ADR-003 design).
+- Inert `frontend/public/pwa-config.js`, 0-byte `app-mockup-new.svg`,
+  `Offline.tsx` empty-state read of the never-populated `api-cache`.
+- Local dev DB holds Phase 10/12 E2E test users (quiz fixture row deleted).
+
+## Product Decisions (need owner input, not engineering fixes)
+
+- Interactive quiz-taking has no reachable UI control (`setShowQuiz(true)`
+  never called; quiz list + lesson links work).
+- `updateProgress` has no UI caller (service exists; dashboard renders API
+  state).
+- Home links (FeaturedCourse/PopularSkills/SearchBar) use mock ids that 404
+  against real data; `/images/*` mock paths have no files (404 thumbnails).
+- Unrouted/dead links: `/forgot-password`, `/terms`, `/privacy`,
+  `/learning-paths`, unrouted `Lessons.tsx` page (Phase 7 record stands).
+
+## Environment Limitations
+
+- Verified on: Windows + Docker Desktop 4.46.0/Engine 28.4.0, Node 22
+  locally, node:20 images, headless Chrome (single browser — no
+  cross-browser matrix).
+- Google provider, valid-token DB-accept beyond tested flows, OAuth
+  replay/expiry live probes: not executed (no creds/store design).
+- Zero-lesson NaN guard: no zero-lesson course exists to exercise it live
+  (unit-covered).
+- Advisory counts are point-in-time (live registry).
+
+## Unresolved Dependencies
+
+Per ADR-008: no majors. See Non-Blocking Technical Debt + Phase 11 table.
+
+## Final Verification (Phase 13 re-runs)
+
+- `npm audit`: FE 22 (2/5/13/2), BE 11 (1/2/7/1) — unchanged since Phase 11.
+- Frontend: build exit 0, `tsc` app+node exit 0, `eslint` 0 errors + 3 known
+  warnings, vitest 4/22.
+- Backend: `tsc` exit 0, build exit 0, jest 3/22, `prisma validate` valid.
+- `docker compose config --quiet` exit 0; all 4 containers in Phase 10/12
+  state (postgres/backend healthy); `:80/health` 200 `healthy`.
+- Auth smoke: login/me/user-courses(33%)/anon-401 all correct.
+- Browser smoke (CDP): load, login→/courses, dashboard 33%, course detail,
+  lesson, logout (token cleared), protected→/login, manifest+SW registered,
+  0 unexpected console errors.
+- Secret scan (tracked tree): clean — sole match is the historical scan
+  record itself. Backend logs presence-only; CORS exact-origin.
+- README fixed (4 release-critical setup corrections); stale perf-doc
+  section annotated; `docs/RELEASE_CHECKLIST.md` created.
+
+## Reviewer Result
+
+Final independent reviewer: RELEASE READY (evidence table in session;
+verdict recorded here).
+
+## Release Checklist
+
+See `docs/RELEASE_CHECKLIST.md` (prerequisites, build, database, runtime,
+security, rollback — all repository-supported procedures).
+
+## Recommended Next Action
+
+Project lifecycle FINISHED. Do not create Phase 14. Controlled release may
+proceed under the conditions above. Future work (product decisions on quiz/
+mock links, major upgrades, real Google verification, rate limiting) needs
+its own scoped effort with an owner — not another phase of this repair
+project.
 
 ## Current Phase
 
@@ -288,7 +415,6 @@ that was connected to nothing. Then STOP and await approval for Phase 8.
   time only — see classification below.
 
 ## Completed Work (Phase 12)
-
 - Harness: no E2E framework in repo and none installed (per Step 14 — unjustified).
   Real-browser E2E via existing capabilities only: headless Chrome + DevTools
   Protocol over .NET WebSocket (temp-only scripts outside the repo:
@@ -924,6 +1050,16 @@ Recorded but not re-run in this session (same environment, prior evidence):
 | `git diff --check` | clean (exit 0) |
 | Reviewer (`general` subagent per `.opencode/agents/reviewer.md`) | PASS (first run FAIL caught an untouched `/user` string mapping; fixed, re-verified, second run PASS) |
 
+## Files Changed in Current Phase (Phase 13)
+
+Modified: `README.md` (4 release-critical setup corrections: SESSION_SECRET
+removal, VITE_API_URL empty+proxy doc, frontend dir + `npm ci` installs,
+Node v20+), `frontend/PERFORMANCE_OPTIMIZATIONS.md` (superseded-subsystem
+accuracy notice). New: `docs/RELEASE_CHECKLIST.md` (runbook). Docs:
+`docs/PROJECT_STATE.md` (this file: Final Release Review),
+`docs/PRODUCTION_PLAN.md` (Phase 13 marked COMPLETE). No app source, auth,
+schema, PWA, Docker, nginx, test, or dependency changes.
+
 ## Files Changed in Current Phase (Phase 12)
 
 Modified: `frontend/vite.config.ts` (workbox `navigateFallbackDenylist`
@@ -1270,11 +1406,5 @@ no API-response runtime caching; icon-generator dir/sharp fix).
 
 ## Next Allowed Action
 
-Phase 12 gate PASSED (reviewer PASS 2026-09-24). STOP. Await explicit
-instruction to begin Phase 13 (Final production hardening and release
-review). Do not start Phase 13 automatically.
-The container stack is left RUNNING (postgres healthy, backend healthy,
-frontend up with the fixed SW, redis up). The backend now runs under a
-rotated ephemeral JWT secret held only in the Phase 12 shell env — sessions
-from earlier phases are invalid (re-login works); a stack recreate outside
-that shell needs a secret re-supplied (see `.env.example`).
+Project lifecycle FINISHED (Phase 13 reviewer: RELEASE READY). No further
+phases. See # Final Release Review above and `docs/RELEASE_CHECKLIST.md`.

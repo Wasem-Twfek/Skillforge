@@ -1,5 +1,12 @@
 # SkillForge Frontend Performance Optimizations
 
+> Accuracy notice: the Zustand-based subsystem described below
+> (`store/useAppStore`, `hooks/useShallowStore`, `hooks/useOptimizedQuery`)
+> was removed as verified-dead code; the live app uses `ThemeContext` for
+> theme state and TanStack Query directly for server state. The remaining
+> sections (lazy routes, code splitting, build config) still describe the
+> current setup.
+
 This document outlines the performance optimizations implemented in the SkillForge frontend application to improve loading speed, reduce bundle size, and enhance the user experience, especially on mobile and low-bandwidth connections.
 
 ## Table of Contents
