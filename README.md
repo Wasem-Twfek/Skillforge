@@ -15,7 +15,7 @@ SkillForge is a full-stack microlearning platform for short, focused learning se
 - Responsive React interface
 - Progressive Web App support
 - PostgreSQL persistence with Prisma
-- Docker Compose deployment with Nginx
+- Docker Compose local infrastructure with Nginx
 
 ## Tech stack
 
