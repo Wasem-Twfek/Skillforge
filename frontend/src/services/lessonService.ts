@@ -8,6 +8,8 @@ export interface Lesson {
   videoUrl?: string | null;
   courseId: string;
   order: number;
+  progress?: number;
+  imageUrl?: string;
   quiz?: Quiz | null;
   createdAt: string;
   updatedAt: string;
