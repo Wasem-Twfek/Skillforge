@@ -4,6 +4,10 @@ import bcrypt from 'bcrypt';
 const prisma = new PrismaClient();
 
 async function main() {
+  if (process.env.NODE_ENV === 'production') {
+    throw new Error('The development seed cannot run in production');
+  }
+
   // Development-only demo seed. Supply the demo account password through
   // SEED_INSTRUCTOR_PASSWORD instead of keeping credentials in source code.
   const seedPassword = process.env.SEED_INSTRUCTOR_PASSWORD;
