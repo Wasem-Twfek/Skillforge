@@ -46,7 +46,7 @@ const Login: React.FC = () => {
       if (success) {
         // Get the redirect path from the location state or default to '/courses'
         const from = location.state?.from?.pathname || '/courses';
-        console.log('Login successful, redirecting to:', from);
+
         navigate(from, { replace: true });
       }
     } catch (err: unknown) {
