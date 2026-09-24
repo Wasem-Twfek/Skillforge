@@ -212,7 +212,7 @@ router.post('/:id/attempt', authenticate, async (req, res) => {
     res.status(201).json({
       id: attempt.id,
       quizId: attempt.quizId,
-      score: attempt.score,
+      score,
       total: questions.length,
       results,
       createdAt: attempt.createdAt,
