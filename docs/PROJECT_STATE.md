@@ -1,9 +1,9 @@
 # PROJECT_STATE.md — SkillForge Persistent State
 
-CURRENT_PHASE: 11 (Dependency/security maintenance)
-CURRENT_STATUS: PHASE 11 COMPLETE — reviewer PASS; STOP, do not start Phase 12 without explicit instruction
+CURRENT_PHASE: 12 (End-to-end validation)
+CURRENT_STATUS: PHASE 12 COMPLETE — reviewer PASS; STOP, do not start Phase 13 without explicit instruction
 LAST_VERIFIED: 2026-09-24
-LAST_COMMIT: (Phase 11 commit) "Update dependencies and security fixes"
+LAST_COMMIT: (Phase 12 commit) "Validate end-to-end user flows"
 
 ---
 
@@ -286,6 +286,85 @@ that was connected to nothing. Then STOP and await approval for Phase 8.
   untouched, deferred (no owning phase; removal would be unproven cleanup).
   All remaining advisories need majors or are unreachable dev/build/install-
   time only — see classification below.
+
+## Completed Work (Phase 12)
+
+- Harness: no E2E framework in repo and none installed (per Step 14 — unjustified).
+  Real-browser E2E via existing capabilities only: headless Chrome + DevTools
+  Protocol over .NET WebSocket (temp-only scripts outside the repo:
+  `cdp-lib.ps1`, `e2e-j1.ps1`, `e2e-j2.ps1`, `oa-verify.ps1`, `e2e-pwa.ps1`).
+  Network captured as URL/method/status with query strings redacted; tokens
+  only ever asserted as booleans; no secret printed or committed.
+- Stack preserved: the Phase 10/11 containers + DB were never destroyed. Quiz
+  fixture (`E2E Fixture Quiz`, created via existing `POST /api/quizzes`) was
+  deleted after use (`Quiz` count back to 0). E2E test users remain (local
+  dev data only, same practice as Phase 10).
+- ALL journeys executed in a real browser through Nginx :80 (fresh profiles;
+  full suite re-run twice with identical results):
+  A load (title/nav, 0 `localhost:3001` refs, 0 non-image failures, 0 app
+  errors); B register 201 → `/courses` + token + nav user; C login 200;
+  D wrong password → 401 + safe `Invalid credentials` alert, stays `/login`,
+  no token; E dashboard `Learning Progress`, no redirect loop; F lesson grid
+  from `GET /api/lessons` (HTML Basics + CSS Fundamentals, no empty state);
+  G detail renders real title/instructor/lessons + `Enroll Now`, no
+  `$undefined`; H lesson renders, no login wall; I enroll 201 → `Enrolled`;
+  J in-browser progress POST → 33 (not NaN) → dashboard shows 33%; K fixture
+  quiz listed (200) with lesson link → lesson renders (interactive
+  quiz-taking has NO reachable UI control — `setShowQuiz(true)` never called,
+  recorded below, not fixed); L profile name+email; M logout → `/login` +
+  token cleared; N anon `/dashboard` → `/login` + sign-in wall, no loop;
+  O garbage token → `/login` + token cleared; OAuth failure path in an
+  SW-controlled browser → backend 302 → `/auth/callback?error=invalid_state`
+  + `Authentication failed.` UI (after the fix below); PWA manifest linked,
+  SW controlling + registered, 0 app errors.
+- REAL BUG FOUND AND FIXED (Step 15 plan → Step 16 minimal fix): the generated
+  SW registers `NavigationRoute → index.html` with NO denylist, so in an
+  SW-controlled browser the provider redirect to `/auth/google/callback` was
+  served cached HTML (200, opaque redirect on fetch) and the SPA fell through
+  `*` → `/` — the backend was never contacted (no access-log entry; curl
+  without SW correctly 302s). Returning users could never complete Google
+  login. Fix: `navigateFallbackDenylist: [/^\/auth\/google/]` in
+  `frontend/vite.config.ts` (6 lines incl. comment; precache/registration/
+  manifest untouched; `/auth/callback` stays SPA-served). Verified: local
+  tsc+build green, frontend image rebuilt, frontend container ONLY recreated
+  (backend/DB untouched), fresh SW-controlled browser → 302 chain + error UI.
+  No DECISIONS entry: the fix enforces the already-decided boundary (backend
+  owns `/auth/google*`, ADR-002/ADR-003; nginx proxies it since Phase 10).
+- Secret rotation (documented, no data impact): recreating the frontend image
+  also recreated backend WITHOUT the Phase 10 shell-only secret → backend
+  fail-fast crash-loop (correct behavior, observed). Supplied a NEW ephemeral
+  secret externally → backend healthy, migrations idempotent (`No pending`),
+  all data intact; only previously-issued JWTs invalidated (E2E always uses
+  fresh logins). Nothing printed or committed.
+- Honest NOT-EXECUTED/classified items: Google provider exchange (no creds);
+  zero-lesson NaN guard has no UI trigger AND no zero-lesson course exists
+  (unit-covered in Phase 9; J proves non-NaN on real data); `/images/*` 404s
+  come only from `mockCourses.ts` demo data with no files in repo
+  (pre-existing cosmetic, identical on any server); Home links use mock ids
+  (pre-existing drift, untouched); `updateProgress` has no UI caller
+  (service-only; J covers API→UI render path).
+- Phase 13 deferrals: CourseDetail quiz dead trigger (no `setShowQuiz(true)`
+  path — needs a product/UI decision, not silent wiring); Home mock-id links
+  and `/images/*` placeholders (content decisions); remaining Phase 11
+  advisories (unchanged by this phase).
+
+## Verified Commands (Phase 12, actual output)
+
+| Command / check | Result |
+|---|---|
+| Real-browser journeys A–O (CDP, fresh profiles, ×2 runs) | ALL PASS as listed above (2nd run identical incl. new unique users) |
+| Quiz fixture lifecycle | created 201 (2 questions) → listed in UI → row DELETED (`Quiz`=0) |
+| OAuth failure, SW-controlled browser | `/auth/google/callback` → 302 → `/auth/callback?error=invalid_state` + error UI (post-fix; pre-fix ended at `/` with no backend contact) |
+| Google provider exchange | NOT EXECUTED — PROVIDER ENVIRONMENT UNAVAILABLE (no creds; no success claimed) |
+| Browser console (all journeys) | 0 unexpected app errors (`/images/*` 404 noise classified separately) |
+| Browser network | same-origin `/api/*` only; 0 `localhost:3001` refs; expected 401s only (anon/invalid flows) |
+| PWA regression | manifest 200 + linked, SW controlling + registered, 0 errors |
+| `npx tsc` app+node / `eslint` / `vitest` (frontend) | exit 0 / 0 errors+3 warnings / 4 files 22 passed |
+| `npx tsc` / `npx jest` (backend) | exit 0 / 3 suites 22 passed |
+| `docker compose build frontend` + frontend-only recreate | exit 0; backend/DB untouched by the deploy (later rotation documented above) |
+| Stack after phase | postgres healthy, backend healthy, frontend up, redis up; Course 1 / Lesson 3 / Quiz 0; `:80/health` 200 |
+| `git diff --check` | clean (exit 0) |
+| Reviewer (`general` subagent per `.opencode/agents/reviewer.md`) | PASS (browser execution, one-file fix justification + deployment, journey table, limitations, secrets, scope re-verified; stray `-w` file + tsbuildinfo churn removed pre-commit) |
 
 ## Verified Commands (Phase 11, actual output)
 
@@ -845,6 +924,16 @@ Recorded but not re-run in this session (same environment, prior evidence):
 | `git diff --check` | clean (exit 0) |
 | Reviewer (`general` subagent per `.opencode/agents/reviewer.md`) | PASS (first run FAIL caught an untouched `/user` string mapping; fixed, re-verified, second run PASS) |
 
+## Files Changed in Current Phase (Phase 12)
+
+Modified: `frontend/vite.config.ts` (workbox `navigateFallbackDenylist`
+only — 6 lines). Docs: `docs/PROJECT_STATE.md` (this file),
+`docs/PRODUCTION_PLAN.md` (Phase 12 marked COMPLETE). No app source (other
+than the SW routing carve-out), auth-flow, schema, nginx, compose, test, or
+dependency changes. E2E harness kept outside the repo (temp-only, per the
+minimal-footprint reading of Step 14). (`tsconfig.*.tsbuildinfo` churn and a
+stray curl `-w` artifact removed pre-commit, uncommitted.)
+
 ## Files Changed in Current Phase (Phase 11)
 
 Modified: `frontend/package.json` + lock (3 removals, axios 1.20.0,
@@ -1181,11 +1270,11 @@ no API-response runtime caching; icon-generator dir/sharp fix).
 
 ## Next Allowed Action
 
-Phase 11 gate PASSED (reviewer PASS 2026-09-24). STOP. Await explicit
-instruction to begin Phase 12 (End-to-end validation). Do not
-start Phase 12 automatically.
+Phase 12 gate PASSED (reviewer PASS 2026-09-24). STOP. Await explicit
+instruction to begin Phase 13 (Final production hardening and release
+review). Do not start Phase 13 automatically.
 The container stack is left RUNNING (postgres healthy, backend healthy,
-frontend up, redis up) with the verified DB; the Phase 10 JWT secret lives
-only in that session's shell env — a stack recreate outside it needs the
-secret re-supplied (see `.env.example`). Dependency rebuilds in Phase 11 were
-build-only; running containers were never restarted or recreated.
+frontend up with the fixed SW, redis up). The backend now runs under a
+rotated ephemeral JWT secret held only in the Phase 12 shell env — sessions
+from earlier phases are invalid (re-login works); a stack recreate outside
+that shell needs a secret re-supplied (see `.env.example`).

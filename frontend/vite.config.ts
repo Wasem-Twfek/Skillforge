@@ -67,6 +67,12 @@ export default defineConfig({
       },
       workbox: {
         globPatterns: ['**/*.{js,css,html,ico,png,svg,json,vue,txt,woff2}'],
+        // Backend-owned OAuth navigation paths must reach the network: the
+        // default NavigationRoute would otherwise serve cached index.html for
+        // /auth/google/callback (the provider redirect target), so the
+        // callback never reaches the backend in SW-controlled browsers and
+        // the SPA falls through to "/". /auth/callback stays SPA-served.
+        navigateFallbackDenylist: [/^\/auth\/google/],
         runtimeCaching: [
           // Add image caching strategy
           {

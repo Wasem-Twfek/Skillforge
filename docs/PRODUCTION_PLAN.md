@@ -319,7 +319,7 @@ PHASE 11 GATE:
 
 ---
 
-## PHASE 12 — End-to-end validation
+## PHASE 12 — End-to-end validation (COMPLETE 2026-09-24, reviewer PASS)
 
 - Objective: run the complete application as deployed: fresh DB init, backend
   + frontend up, auth flows, course/lesson/progress/quiz paths, PWA install
