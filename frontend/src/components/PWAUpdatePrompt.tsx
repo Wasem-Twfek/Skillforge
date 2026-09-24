@@ -7,31 +7,18 @@ const PWAUpdatePrompt: React.FC = () => {
     needRefresh: [needRefresh, setNeedRefresh],
     updateServiceWorker,
   } = useRegisterSW({
-    onRegistered(registration: ServiceWorkerRegistration | undefined) {
-      console.log('SW Registered:', registration);
-    },
-    onRegisterError(error: Error) {
-      console.log('SW registration error', error);
-    },
     onOfflineReady() {
-      console.log('App ready to work offline');
       const offlineToast = document.createElement('div');
       offlineToast.className = 'offline-toast';
       offlineToast.textContent = 'App ready for offline use';
       document.body.appendChild(offlineToast);
 
-      setTimeout(() => {
-        if (offlineToast.parentNode) {
-          document.body.removeChild(offlineToast);
-        }
-      }, 3000);
+      window.setTimeout(() => offlineToast.remove(), 3000);
     },
   });
 
   useEffect(() => {
-    if (needRefresh) {
-      setShowPrompt(true);
-    }
+    setShowPrompt(needRefresh);
   }, [needRefresh]);
 
   const handleUpdate = () => {
@@ -43,24 +30,26 @@ const PWAUpdatePrompt: React.FC = () => {
   if (!showPrompt) return null;
 
   return (
-    <div className="fixed bottom-4 right-4 z-50 bg-white rounded-lg shadow-lg p-4 max-w-sm">
-      <div className="flex flex-col space-y-4">
+    <div className="fixed bottom-4 right-4 z-50 max-w-sm rounded-lg bg-white p-4 shadow-lg dark:bg-gray-800">
+      <div className="flex flex-col gap-4">
         <div>
-          <h3 className="text-lg font-semibold text-gray-900">New Version Available</h3>
-          <p className="text-sm text-gray-600">
-            A new version of SkillForge is available. Would you like to update now?
+          <h3 className="text-lg font-semibold text-gray-900 dark:text-white">New version available</h3>
+          <p className="text-sm text-gray-600 dark:text-gray-300">
+            A new version of SkillForge is ready. Update now?
           </p>
         </div>
-        <div className="flex space-x-4">
+        <div className="flex gap-3">
           <button
+            type="button"
             onClick={handleUpdate}
-            className="flex-1 bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 transition-colors"
+            className="flex-1 rounded-md bg-blue-600 px-4 py-2 text-white transition hover:bg-blue-700"
           >
-            Update Now
+            Update
           </button>
           <button
+            type="button"
             onClick={() => setShowPrompt(false)}
-            className="flex-1 bg-gray-200 text-gray-800 px-4 py-2 rounded-md hover:bg-gray-300 transition-colors"
+            className="flex-1 rounded-md bg-gray-200 px-4 py-2 text-gray-800 transition hover:bg-gray-300 dark:bg-gray-700 dark:text-gray-100 dark:hover:bg-gray-600"
           >
             Later
           </button>
@@ -70,4 +59,4 @@ const PWAUpdatePrompt: React.FC = () => {
   );
 };
 
-export default PWAUpdatePrompt; 
+export default PWAUpdatePrompt;
