@@ -14,7 +14,7 @@ interface QuizProps {
   questions: Question[];
 }
 
-const Quiz: React.FC<QuizProps> = ({ quizId, questions, onComplete }) => {
+const Quiz: React.FC<QuizProps> = ({ quizId, questions }) => {
   const [currentQuestion, setCurrentQuestion] = useState(0);
   const [answers, setAnswers] = useState<number[]>([]);
   const [attempt, setAttempt] = useState<QuizAttemptResult | null>(null);
