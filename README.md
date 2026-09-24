@@ -3,112 +3,128 @@
 [![CI](https://github.com/wasem15/Skillforge/actions/workflows/ci.yml/badge.svg)](https://github.com/wasem15/Skillforge/actions/workflows/ci.yml)
 [![Security](https://github.com/wasem15/Skillforge/actions/workflows/security.yml/badge.svg)](https://github.com/wasem15/Skillforge/actions/workflows/security.yml)
 
-SkillForge is a full-stack microlearning platform for short, focused learning sessions. It brings course browsing, lessons, enrollment, progress tracking, quizzes, authentication, PWA support, and Docker deployment into one application.
+SkillForge is a microlearning web app for short lessons, course enrollment, progress tracking, and quizzes. The frontend is built with React and TypeScript, with an Express API and PostgreSQL database behind it.
 
-## Features
+## What is included
 
 - Course and lesson browsing
 - Email/password authentication with JWT
-- Google OAuth integration
+- Google OAuth flow
 - Course enrollment and progress tracking
 - Lesson quizzes and attempts
-- Responsive React interface
-- Progressive Web App support
-- PostgreSQL persistence with Prisma
-- Docker Compose deployment with Nginx
+- Responsive UI with dark mode
+- PWA support
+- PostgreSQL with Prisma
+- Docker Compose and Nginx
+- Frontend and backend automated tests
 
-## Tech stack
+## Stack
 
-| Layer | Technologies |
+| Part | Technology |
 | --- | --- |
 | Frontend | React, TypeScript, Vite, Tailwind CSS, TanStack Query |
 | Backend | Node.js, Express, TypeScript |
 | Database | PostgreSQL, Prisma |
 | Authentication | JWT, Google OAuth |
 | Testing | Vitest, Testing Library, Jest |
-| Infrastructure | Docker, Docker Compose, Nginx |
+| Deployment | Docker, Docker Compose, Nginx |
 | PWA | vite-plugin-pwa |
 
-## Project structure
+## Repository layout
 
+```text
 Skillforge/
-├── frontend/              React application
-├── skillforge-backend/    Express API and Prisma schema
-├── docker-compose.yml     Local multi-service environment
-└── nginx.conf             Reverse proxy and SPA routing
+├── frontend/                 # React application
+├── skillforge-backend/       # Express API and Prisma schema
+├── docker-compose.yml        # Local multi-service stack
+├── nginx.conf                # Reverse proxy configuration
+└── docker-setup.ps1          # Windows Docker setup helper
+```
 
 ## Run locally
 
-### Prerequisites
+### Requirements
 
 - Node.js 20+
 - npm
-- PostgreSQL 16+ or Docker
+- PostgreSQL 16+, or Docker
 
-### Install dependencies
+### Install
 
-    cd frontend
-    npm ci
+```bash
+cd frontend
+npm ci
 
-    cd ../skillforge-backend
-    npm ci
+cd ../skillforge-backend
+npm ci
+```
 
-Create the local environment files from the provided .env.example files and set your local values.
+Create the local `.env` files from the provided `.env.example` files and fill in your own values.
 
 ### Database
 
-    cd skillforge-backend
-    npm run prisma:generate
-    npm run prisma:migrate
+```bash
+cd skillforge-backend
+npm run prisma:generate
+npm run prisma:migrate
+```
 
-### Start the application
+### Start the app
 
 Backend:
 
-    cd skillforge-backend
-    npm run dev
+```bash
+cd skillforge-backend
+npm run dev
+```
 
 Frontend:
 
-    cd frontend
-    npm run dev
+```bash
+cd frontend
+npm run dev
+```
 
-The Vite development server uses http://localhost:3000.
+The development frontend runs on port 3000.
 
 ## Docker
 
-Start the full local stack with:
+For the full local stack:
 
-    docker compose up --build
+```bash
+docker compose up --build
+```
 
-The default entry point is http://localhost.
+Open http://localhost after the containers start.
 
-Use deployment-managed secrets in production. Do not run the development seed against a production database.
+The compose file is intended for local use. Use deployment-managed secrets and a production database configuration when deploying elsewhere. Do not run the development seed against a production database.
 
 ## Testing
 
 Frontend:
 
-    cd frontend
-    npm run lint
-    npm test
-    npm run test:coverage
-    npm run build
+```bash
+cd frontend
+npm run lint
+npm test
+npm run test:coverage
+npm run build
+```
 
 Backend:
 
-    cd skillforge-backend
-    npm test
-    npm run build
+```bash
+cd skillforge-backend
+npm test
+npm run build
+```
+
+## Notes
+
+The home page contains sample course content for the public UI. Enrolled-course data, lesson progress, and quiz attempts are handled by the backend API.
+
+The Google OAuth flow is implemented, but the external provider exchange was not live-tested during the final validation because provider credentials were not available.
 
 ## Security
 
-Keep .env files out of version control and supply secrets through the environment or a secret manager. Previously exposed credentials should be rotated or revoked before reuse.
-
-See SECURITY.md for the reporting process.
-
-## Project notes
-
-Google OAuth is implemented in the application, but the external provider exchange was not live-tested during the final local validation because provider credentials were unavailable.
-
-The landing page uses sample course data for presentation. The main learning flows use the backend API.
+Keep real credentials and local `.env` files out of Git. See [SECURITY.md](SECURITY.md) for reporting and deployment notes.
