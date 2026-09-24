@@ -4,17 +4,20 @@ import bcrypt from 'bcrypt';
 const prisma = new PrismaClient();
 
 async function main() {
-  // Development-only demo seed. The credentials below are local-dev
-  // placeholders (never production secrets); the password is bcrypt-hashed
-  // before storage, exactly like the live registration path.
-  // Create an instructor
+  // Development-only demo seed. Supply the demo account password through
+  // SEED_INSTRUCTOR_PASSWORD instead of keeping credentials in source code.
+  const seedPassword = process.env.SEED_INSTRUCTOR_PASSWORD;
+  if (!seedPassword) {
+    throw new Error('SEED_INSTRUCTOR_PASSWORD is required to run the seed');
+  }
+
   const instructor = await prisma.user.upsert({
     where: { email: 'instructor@example.com' },
     update: {},
     create: {
       email: 'instructor@example.com',
       name: 'John Doe',
-      password: await bcrypt.hash('password123', 10),
+      password: await bcrypt.hash(seedPassword, 10),
     },
   });
 
