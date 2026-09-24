@@ -1,23 +1,87 @@
 # PROJECT_STATE.md — SkillForge Persistent State
 
-CURRENT_PHASE: 5 (Authentication and OAuth)
-CURRENT_STATUS: PHASE 5 COMPLETE — reviewer PASS; STOP, do not start Phase 6 without explicit instruction
-LAST_VERIFIED: 2026-09-23
-LAST_COMMIT: (Phase 5 closure commit) "Harden authentication and OAuth flow"
+CURRENT_PHASE: 6 (Database and Prisma)
+CURRENT_STATUS: PHASE 6 COMPLETE — reviewer PASS; STOP, do not start Phase 7 without explicit instruction
+LAST_VERIFIED: 2026-09-24
+LAST_COMMIT: (Phase 6 closure commit) "Stabilize database schema and Prisma queries"
 
 ---
 
 ## Current Phase
 
-Phase 5 — Authentication and OAuth. Secure and stabilize the existing
-authentication and OAuth implementation without replacing its architecture.
+Phase 6 — Database and Prisma. Make the database and Prisma layer internally
+consistent, reliable, and safe for the existing application. Then STOP and
+await approval for Phase 7.
 
 ## Current Objective
 
-Per `docs/PRODUCTION_PLAN.md` Phase 5: implement real OAuth CSRF state
-handling with existing cookie support, unify the redirect-URI env name
-(`GOOGLE_REDIRECT_URI`), align callback behavior and docs. Then STOP and
-await approval for Phase 6.
+Per `docs/PRODUCTION_PLAN.md` Phase 6: verify schema/migrations/seed against
+actual application usage; fix confirmed model drift, the NaN-progress lead,
+and the migration gap for justified indexes; make the seed idempotent;
+analyze transaction requirements. Then STOP and await approval for Phase 7.
+
+## Completed Work (Phase 6)
+
+- NaN-progress root cause (verified, not assumed): `POST /:id/progress`
+  (`src/routes/courses.ts`) computed
+  `Math.round((completedLessons / totalLessons) * 100)` with no zero guard,
+  while the sibling `GET /user` calculation already guarded
+  (`totalLessons > 0 ? ... : 0`). A course with zero lessons yields 0/0 =
+  NaN, which JSON serializes as null. Fixed by mirroring the existing guard
+  pattern. No shape change for non-empty courses.
+- Migration gap closed (verified, not assumed): the working tree carried
+  uncommitted `Lesson @@index([courseId])` and `LessonProgress
+  @@index([enrollmentId])` additions with no migration. Both indexes are
+  justified by real queries (`GET /:id/lessons` filters `courseId`; lesson
+  and progress counts filter/join on `courseId`; `Enrollment include
+  progress` joins `enrollmentId`; PostgreSQL does not auto-index FK
+  columns). Kept them and added forward migration
+  `20260924000000_add_lookup_indexes` (two `CREATE INDEX` statements,
+  Prisma-conventional names, no DROP/ALTER, history untouched). `Lesson.order`
+  index correctly NOT added (no query filters/orders on it).
+- Seed idempotent (D-008 decided, ADR-005): `course.create` → `findFirst`
+  (`instructorId` + `title`; no unique field exists to upsert on) with
+  create-if-absent; lesson creation guarded by `count == 0`. Instructor
+  `upsert` unchanged. FK order (instructor → course → lessons) verified
+  valid; password bcrypt-hashed at seed time as before; demo credential now
+  explicitly commented dev-only (no values printed).
+- Lesson ordering (query correctness): `GET /:id/lessons` and the
+  course-detail `lessons` include now `orderBy: { order: 'asc' }` using the
+  existing `Lesson.order` column the seed populates — deterministic sequence
+  for the sequential UI. No shape change.
+- Verified no-ops (evidence, no code): no model/field inventions — frontend
+  `types/course.ts` + mock data carry `rating/reviews/students/price/tags/
+  duration/resources` but the backend never produces them and live
+  `CourseDetail.tsx` renders them as `undefined`; the established contract
+  is backend+schema, so NO schema change (stays Phase 7 under D-006).
+  `quizzes[]` vs `quiz`: live code uses singular `quiz` matching the 1-1
+  schema — no drift. No transactions added: enroll = single `create` backed
+  by `@@unique([userId,courseId])`, progress = single atomic `upsert` on
+  `@@unique([userId,lessonId])`; check-then-act races can at worst mistranslate
+  an error code, never corrupt data. Generator deprecation warning re-observed
+  on `prisma generate` (upstream Prisma 6.x notice; client generates correctly
+  to `node_modules/@prisma/client` v6.7.0) — untouched, Phase 11 owns it.
+  PrismaClient singleton kept; seed/migrate one-shot clients justified.
+  `directUrl` semantics unchanged. Relations, nullability, and unique
+  constraints verified matching all query usage (see inventory in session).
+- `git diff --check` clean. No API, auth, frontend, nginx, or dependency changes.
+
+## Verified Commands (Phase 6, actual output)
+
+| Command (workdir) | Result |
+|---|---|
+| `npx prisma validate` with `DATABASE_URL` set (skillforge-backend) | PASS — schema valid |
+| `npx prisma generate` (skillforge-backend) | PASS — Prisma Client v6.7.0 to `node_modules/@prisma/client` (same upstream generator-output-path deprecation warning as Phase 2, untouched) |
+| `npx tsc --noEmit -p tsconfig.json` (skillforge-backend) | PASS — exit 0 |
+| `npx tsc --noEmit prisma/seed.ts` standalone flags | PASS — exit 0 (seed is outside `tsconfig.json` include) |
+| `npm run build` (skillforge-backend) | PASS — exit 0 |
+| `npx jest` (skillforge-backend) | PASS — 2 suites, 13 tests (no regression vs Phase 5) |
+| `node dist/server.js` boot probes (ephemeral env, DB down, :3011) | `GET /` → 200 API doc; `GET /api/courses/abc/lessons` → 500 route-level (mounted, DB-down — same graceful baseline) |
+| `git diff --check` | clean (exit 0) |
+| DATABASE RUNTIME VERIFICATION | NOT EXECUTED — no PostgreSQL and no Docker engine in this environment (port 5432 closed, Docker pipe unavailable); `migrate deploy` on fresh DB + double-seed + live progress probe belong to Phase 10/12 against real Postgres |
+| Reviewer (`general` subagent per `.opencode/agents/reviewer.md`) | PASS (validate/tsc re-run; diff/migration/seed/scope/secrets re-verified) |
+
+## Completed Work (Phase 5)
 
 ## Completed Work (Phase 5)
 
@@ -359,6 +423,20 @@ Recorded but not re-run in this session (same environment, prior evidence):
 | `git diff --check` | clean (exit 0) |
 | Reviewer (`general` subagent per `.opencode/agents/reviewer.md`) | PASS (first run FAIL caught an untouched `/user` string mapping; fixed, re-verified, second run PASS) |
 
+## Files Changed in Current Phase (Phase 6)
+
+Modified: `skillforge-backend/src/routes/courses.ts` (NaN guard in
+`POST /:id/progress`, `orderBy: { order: 'asc' }` in `GET /:id/lessons` and
+course-detail lessons include), `skillforge-backend/prisma/seed.ts`
+(idempotent course/lessons guards + dev-only comment),
+`skillforge-backend/prisma/schema.prisma` (the two working-tree `@@index`
+lines, now covered by a migration). New:
+`skillforge-backend/prisma/migrations/20260924000000_add_lookup_indexes/migration.sql`
+(two `CREATE INDEX`). Docs: `docs/DECISIONS.md` (ADR-005, D-008 decided),
+`docs/PRODUCTION_PLAN.md` (Phase 6 marked COMPLETE),
+`docs/PROJECT_STATE.md` (this file). No `package.json`, auth, frontend,
+nginx, compose, or test-infrastructure changes.
+
 ## Files Changed in Current Phase (Phase 5)
 
 New: `skillforge-backend/src/lib/oauthState.ts`,
@@ -468,6 +546,17 @@ Recorded for later phases; do not fix early.
 - Phase 6: seed `course.create` (not upsert) can duplicate; no `@@index` on
   `Lesson.order`, `LessonProgress.enrollmentId`; progress math can produce NaN;
   committed generated Prisma client (`.so`/`.dll`) bloats repo.
+- Phase 6 (residual, verified 2026-09-24): schema/migration/seed stabilized
+  (NaN guard, forward index migration, idempotent seed, lesson ordering;
+  ADR-005, D-008 decided). Remaining by design: live `migrate deploy` on a
+  fresh container DB + double-seed + live progress probe NOT EXECUTED here
+  (no PostgreSQL/Docker engine) — belongs to Phase 10/12 against real
+  Postgres. `POST /api/quizzes` and `POST /api/quizzes/:id/attempt` lack
+  `authenticate` (GETs require it; attempt takes `userId` from the body) —
+  auth-scope residual recorded without reopening Phase 5. Progress-guard unit
+  coverage belongs to Phase 9. Frontend type-vs-API drift
+  (`rating/reviews/students/price/tags/duration/resources` read as
+  `undefined` by live `CourseDetail.tsx`) stays Phase 7 under D-006.
 - Phase 7: frontend type/lint failures; dead components/pages list; `/courses`
   renders lessons; `LessonDetail` gates on token; two theme stores; SDK v5
   `@types/react-router-dom` stub; undeclared `VITE_API_URL`/`VITE_ENABLE_PERFORMANCE_MONITORING`.
@@ -491,6 +580,8 @@ Phase 1 added one security decision: ADR-001 (no hardcoded secret fallbacks;
 production fail-fast on missing `JWT_SECRET`). Phase 4 added ADR-002
 (`/api/auth/*` canonical frontend auth prefix). Phase 5 added ADR-003
 (cookie-based OAuth CSRF state) and ADR-004 (keep `localStorage` JWT).
+Phase 6 added ADR-005 (idempotent seed via lookup guards; FK lookup indexes
+via forward migration; no field inventions, no transactions).
 
 ## Risks
 
@@ -513,6 +604,6 @@ production fail-fast on missing `JWT_SECRET`). Phase 4 added ADR-002
 
 ## Next Allowed Action
 
-Phase 5 gate PASSED (reviewer PASS 2026-09-23). STOP. Await explicit
-instruction to begin Phase 6 (Database and Prisma). Do not
-start Phase 6 automatically.
+Phase 6 gate PASSED (reviewer PASS 2026-09-24). STOP. Await explicit
+instruction to begin Phase 7 (Frontend correctness and integration). Do not
+start Phase 7 automatically.

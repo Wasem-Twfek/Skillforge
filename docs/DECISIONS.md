@@ -42,7 +42,7 @@ stay aligned with the repository.
 | D-005 | `/api/auth/*` prefix convention (nginx rewrite vs backend-mounted routes) | 4 | decided (ADR-002) |
 | D-006 | Frontend/backend response-shape alignment for lessons/quizzes | 4/7 | open |
 | D-007 | Dependency major-upgrade policy (vite/vitest/prisma/express majors) | 11 | open |
-| D-008 | Seed idempotency approach (upsert pattern exists for instructor) | 6 | open |
+| D-008 | Seed idempotency approach (upsert pattern exists for instructor) | 6 | decided (ADR-005) |
 
 ## ADR format (use for every decision made during the project)
 
@@ -121,6 +121,35 @@ revisit only with evidenced need in a dedicated auth phase.
 Evidence: `frontend/src/lib/axios.ts`, `frontend/src/contexts/AuthContext.tsx`,
 `skillforge-backend/src/routes/auth.ts` (`/callback` escaping), Phase 1/5
 no-secret-output verification.
+
+## ADR-005 (2026-09-24) — Seed idempotency via lookup guards; FK lookup indexes via forward migration
+Status: Accepted
+Context: Phase 6 proved `prisma/seed.ts` used unconditional `course.create`
+plus three unconditional `lesson.create` calls, so every re-run duplicated
+the demo course and its lessons (only the instructor used `upsert`). Phase 6
+also proved `Lesson.courseId` and `LessonProgress.enrollmentId` are filtered/
+joined by real queries (`GET /api/courses/:id/lessons`, lesson counts, and
+`Enrollment include progress`) while the migration history contained no
+matching indexes (PostgreSQL does not auto-index FK columns).
+Decision: Seed reuses instead of duplicating — `course.findFirst`
+(`instructorId` + `title`; `Course` has no unique field to upsert on) and
+lesson creation guarded by `lesson.count == 0` for the course. Schema gains
+exactly `Lesson @@index([courseId])` and `LessonProgress
+@@index([enrollmentId])`, applied as a normal forward migration
+(`20260924000000_add_lookup_indexes`, two `CREATE INDEX` statements, no
+DROP/ALTER). No model/field additions: frontend-only aspirational fields
+(`rating/students/price/tags/duration/resources`) stay out of the schema
+(D-006 remains open for Phase 7). No transactions added: enroll is a single
+`create` backed by `@@unique([userId,courseId])`, progress a single atomic
+`upsert` on `@@unique([userId,lessonId])`.
+Consequences: `npm run prisma:seed` is re-runnable without duplicates
+(sequential use); fresh databases get the lookup indexes through
+`prisma migrate deploy`. D-008 closed.
+Evidence: `skillforge-backend/prisma/seed.ts`,
+`skillforge-backend/prisma/schema.prisma`,
+`skillforge-backend/prisma/migrations/20260924000000_add_lookup_indexes/migration.sql`,
+`skillforge-backend/src/routes/courses.ts` (query evidence), Phase 6
+verification (`prisma validate`, `generate`, `tsc`, `jest`, reviewer PASS).
 
 When a decision is made, append an entry:
 

@@ -169,7 +169,7 @@ PHASE 5 GATE:
 
 ---
 
-## PHASE 6 — Database and Prisma
+## PHASE 6 — Database and Prisma (COMPLETE)
 
 - Objective: validate schema/migrations/seed against a clean PostgreSQL;
   initialize a clean DB from scratch; make seed idempotent if repo evidence

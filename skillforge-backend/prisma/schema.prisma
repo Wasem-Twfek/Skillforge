@@ -59,6 +59,10 @@ model Lesson {
   progress    LessonProgress[]
   createdAt   DateTime        @default(now())
   updatedAt   DateTime        @updatedAt
+
+  // Lookups by course: GET /api/courses/:id/lessons and the progress
+  // lesson count both filter on courseId.
+  @@index([courseId])
 }
 
 model Enrollment {
@@ -85,6 +89,8 @@ model LessonProgress {
   enrollment   Enrollment @relation(fields: [enrollmentId], references: [id])
 
   @@unique([userId, lessonId])
+  // Joined on every enrolled-courses read (Enrollment include progress).
+  @@index([enrollmentId])
 }
 
 model Quiz {

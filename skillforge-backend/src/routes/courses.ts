@@ -113,6 +113,7 @@ router.get('/:id/lessons', async (req, res) => {
   try {
     const lessons = await prisma.lesson.findMany({
       where: { courseId: req.params.id },
+      orderBy: { order: 'asc' },
     });
     res.json(lessons);
   } catch (error) {
@@ -136,6 +137,7 @@ router.get('/:id', async (req, res) => {
           },
         },
         lessons: {
+          orderBy: { order: 'asc' },
           include: {
             quiz: true,
           },
@@ -256,7 +258,9 @@ router.post('/:id/progress', authenticate, async (req: Request, res) => {
       },
     });
 
-    const progress = Math.round((completedLessons / totalLessons) * 100);
+    // Guard against division by zero: a course with no lessons would
+    // otherwise yield NaN (0/0), which serializes to null in JSON.
+    const progress = totalLessons > 0 ? Math.round((completedLessons / totalLessons) * 100) : 0;
 
     res.json({ progress });
   } catch (error) {
