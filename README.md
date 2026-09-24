@@ -1,165 +1,111 @@
 # SkillForge
 
-SkillForge is an AI-powered microlearning platform designed to help users learn skills like coding, design, and languages in 5-minute daily sessions.
+SkillForge is a full-stack microlearning platform for short, focused learning sessions. It brings course browsing, lessons, enrollment, progress tracking, quizzes, authentication, PWA support, and Docker deployment into one application.
 
 ## Features
 
-- **Engaging Homepage**: Modern, interactive landing page with multiple sections
-- **Popular Skills**: Interactive carousel showcase of top courses
-- **AI Recommendations**: Personalized skill recommendations based on interests
-- **Daily Streak Tracking**: Gamified learning progress visualization
-- **Why SkillForge Works**: Educational methodology explanation
-- **Testimonials**: User success stories
-- **Newsletter & Call-to-Action**: Sign-up and conversion elements
+- Course and lesson browsing
+- Email/password authentication with JWT
+- Google OAuth integration
+- Course enrollment and progress tracking
+- Lesson quizzes and attempts
+- Responsive React interface
+- Progressive Web App support
+- PostgreSQL persistence with Prisma
+- Docker Compose deployment with Nginx
 
-## 🔧 Fixing Google OAuth Authentication Issues
+## Tech stack
 
-If you're experiencing the **"missing_code"** error during Google authentication, follow these steps to fix it:
+| Layer | Technologies |
+| --- | --- |
+| Frontend | React, TypeScript, Vite, Tailwind CSS, TanStack Query |
+| Backend | Node.js, Express, TypeScript |
+| Database | PostgreSQL, Prisma |
+| Authentication | JWT, Google OAuth |
+| Testing | Vitest, Testing Library, Jest |
+| Infrastructure | Docker, Docker Compose, Nginx |
+| PWA | vite-plugin-pwa |
 
-### 1. Set Up Environment Variables
+## Project structure
 
-The most common cause of authentication failures is missing or incorrect environment variables.
+Skillforge/
+├── frontend/              React application
+├── skillforge-backend/    Express API and Prisma schema
+├── docker-compose.yml     Local multi-service environment
+└── nginx.conf             Reverse proxy and SPA routing
 
-**Backend (.env file in skillforge-backend/ — see `skillforge-backend/.env.example`):**
-
-```bash
-# Server Configuration
-PORT=3001
-NODE_ENV=development
-
-# Frontend URL (used for CORS and redirect)
-FRONTEND_URL=http://localhost:3000
-
-# JWT Configuration (required — no default; generate a long random value)
-JWT_SECRET=change-me-to-a-long-random-value-in-local-env
-
-# Google OAuth Configuration (leave empty to disable Google login locally)
-GOOGLE_CLIENT_ID=
-GOOGLE_CLIENT_SECRET=
-GOOGLE_REDIRECT_URI=http://localhost:3001/auth/google/callback
-```
-
-> Security note: any credential previously committed to this repository must be
-> treated as compromised. Rotate the Google OAuth client secret and JWT secret
-> in Google Cloud Console / your deployment environment.
-> Never commit real `.env` values — only `.env.example` placeholders.
-
-**Frontend (`frontend/.env`, usually not needed):**
-
-```bash
-# Leave VITE_API_URL EMPTY so API calls stay same-origin and resolve through
-# the Vite dev proxy (local) or Nginx (Docker). Setting an absolute backend
-# URL here (e.g. http://localhost:3001) bypasses the proxy and breaks requests
-# with CORS errors on non-default origins.
-VITE_API_URL=
-
-# Environment
-NODE_ENV=development
-```
-
-### 2. Google Cloud Console Configuration
-
-1. Go to the [Google Cloud Console](https://console.cloud.google.com/)
-2. Select your project or create a new one
-3. Navigate to "APIs & Services" > "Credentials"
-4. Create or edit an OAuth 2.0 Client ID
-5. Add the following authorized redirect URIs:
-   - `http://localhost:3001/auth/google/callback` (development)
-   - Your production callback URL if applicable
-
-### 3. Common Issues and Solutions
-
-#### "missing_code" Error:
-
-- **Cause 1**: User is refreshing or directly accessing the callback URL
-  - **Fix**: We've added protection for this in the latest code
-  
-- **Cause 2**: Redirect URI mismatch
-  - **Fix**: Ensure the GOOGLE_REDIRECT_URI in your .env matches exactly with the URI registered in Google Cloud Console
-
-- **Cause 3**: Google OAuth configuration issues
-  - **Fix**: Verify client ID and secret are correct, and that the OAuth screen is properly configured
-
-#### CSRF Protection:
-
-The backend generates a cryptographically random `state` for each login
-attempt, stores it in an `HttpOnly` `oauth_state` cookie, and verifies it
-against the `state` Google returns to `/auth/google/callback`. Callbacks with
-a missing or mismatched state are rejected before any code exchange.
-
-### 4. Testing the OAuth Flow
-
-To test your OAuth configuration:
-
-1. Start both the frontend and backend servers
-2. Open the app at `http://localhost:3000` and click the Google login button
-3. Approve the consent screen; you should land back in the app authenticated
-4. If it fails, you are redirected to `/auth/callback?error=<reason>` in the
-   app (`missing_code`, `invalid_state`, or `server_error`)
-
-### 5. Debugging Tools
-
-- Check the backend console logs for authentication process details
-- Use the debug info in the AuthCallback component
-- Call `GET /auth/me` with your JWT as `Authorization: Bearer <token>` to
-  verify token validity directly
-
-## 🚀 Getting Started
+## Run locally
 
 ### Prerequisites
 
-- Node.js (v20+; matches the Docker images; verified locally on v22)
-- PostgreSQL database
-- Google Cloud Platform account with OAuth credentials
+- Node.js 20+
+- npm
+- PostgreSQL 16+ or Docker
 
-### Installation
+### Install dependencies
 
-1. Clone the repository
-2. Install dependencies (reproducible installs from the lockfiles):
-   ```bash
-   cd frontend
-   npm ci
-   cd ../skillforge-backend
-   npm ci
-   ```
-3. Set up environment variables (see above)
-4. Run database migrations:
-   ```bash
-   cd skillforge-backend
-   npm run prisma:migrate
-   ```
+    cd frontend
+    npm ci
 
-### Running the app
+    cd ../skillforge-backend
+    npm ci
 
-1. Start the backend:
-   ```bash
-   cd skillforge-backend
-   npm run dev
-   ```
-2. Start the frontend:
-   ```bash
-   cd frontend
-   npm run dev
-   ```
-3. Open `http://localhost:3000` in your browser
+Create the local environment files from the provided .env.example files and set your local values.
 
-## 🔍 Troubleshooting
+### Database
 
-If you continue experiencing issues:
+    cd skillforge-backend
+    npm run prisma:generate
+    npm run prisma:migrate
 
-1. Check browser console and network tab for error details
-2. Verify all environment variables are set correctly
-3. Look at browser cookies and session storage for token and state persistence
-- **src/components/home/**: Contains all the homepage components
-- **src/pages/**: Main application pages
-- **src/data/**: Mock data for courses
-- **public/screenshots/**: Application mockup images
+### Start the application
 
-## Tech Stack
+Backend:
 
-- React
-- TypeScript
-- Tailwind CSS
-- Framer Motion
-- Lucide Icons
-- Vite
+    cd skillforge-backend
+    npm run dev
+
+Frontend:
+
+    cd frontend
+    npm run dev
+
+The Vite development server uses http://localhost:3000.
+
+## Docker
+
+Start the full local stack with:
+
+    docker compose up --build
+
+The default entry point is http://localhost.
+
+Use deployment-managed secrets in production. Do not run the development seed against a production database.
+
+## Testing
+
+Frontend:
+
+    cd frontend
+    npm run lint
+    npm test
+    npm run test:coverage
+    npm run build
+
+Backend:
+
+    cd skillforge-backend
+    npm test
+    npm run build
+
+## Security
+
+Keep .env files out of version control and supply secrets through the environment or a secret manager. Previously exposed credentials should be rotated or revoked before reuse.
+
+See SECURITY.md for the reporting process.
+
+## Project notes
+
+Google OAuth is implemented in the application, but the external provider exchange was not live-tested during the final local validation because provider credentials were unavailable.
+
+The landing page uses sample course data for presentation. The main learning flows use the backend API.
