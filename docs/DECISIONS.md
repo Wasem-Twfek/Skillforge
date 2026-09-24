@@ -173,6 +173,34 @@ Evidence: `skillforge-backend/prisma/schema.prisma` (`Quiz.lessonId
 `frontend/src/pages/CourseDetail.tsx`, Phase 7 verification (`tsc` app+node
 exit 0, reviewer PASS).
 
+## ADR-007 (2026-09-24) — Single generated PWA manifest, single SW registrar, no API-response caching
+Status: Accepted
+Context: Phase 8 proved the PWA had two canonical manifests (static
+`frontend/public/manifest.json` with screenshot refs to nonexistent `.png`
+files, plus the `vite-plugin-pwa` generated `manifest.webmanifest`, both
+linked from `index.html`), two SW registrars (`registerSW` in `main.tsx`
+with a `confirm()` update dialog plus `useRegisterSW` in the mounted
+`PWAUpdatePrompt` card), an empty precache (`globDirectory: './dist'` vs
+real `outDir: '../dist'`), and a Workbox `api-cache` rule persisting
+authenticated API GET responses in a shared static cache (with a
+`process.env` reference that is undefined in SW scope).
+Decision: The plugin-generated `manifest.webmanifest` is the single
+canonical manifest (enriched with the static file's any/maskable icon
+split and screenshots retargeted to the existing `.svg` assets; static
+file deleted); `useRegisterSW` in `PWAUpdatePrompt` is the single
+registrar (duplicate deleted, offline-ready toast preserved there); no
+runtime caching of API responses (rule removed; only public static
+images/JS/CSS/fonts are cached); the icon generator writes to the real
+frontend `publicDir` and resolves `sharp` from `frontend/node_modules`.
+Consequences: One manifest, one registration/update UI, a populated
+precache (34 entries), no authenticated data in SW caches. `Offline.tsx`
+keeps its opportunistic `api-cache` read with graceful empty state.
+Evidence: `frontend/vite.config.ts` (PWA block), `frontend/index.html`,
+`frontend/src/main.tsx`, `frontend/src/components/PWAUpdatePrompt.tsx`,
+deleted `frontend/public/manifest.json` +
+`frontend/src/pwa/registerSW.ts`, `scripts/create-pwa-icons.cjs`, Phase 8
+build/precache/browser verification.
+
 When a decision is made, append an entry:
 
 ```

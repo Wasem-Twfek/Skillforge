@@ -1,9 +1,9 @@
 # PROJECT_STATE.md — SkillForge Persistent State
 
-CURRENT_PHASE: 7 (Frontend correctness and integration)
-CURRENT_STATUS: PHASE 7 COMPLETE (static + runtime recovery) — reviewer PASS; STOP, do not start Phase 8 without explicit instruction
+CURRENT_PHASE: 8 (PWA)
+CURRENT_STATUS: PHASE 8 COMPLETE — reviewer PASS; STOP, do not start Phase 9 without explicit instruction
 LAST_VERIFIED: 2026-09-24
-LAST_COMMIT: (Phase 7 runtime-recovery commit) "Fix frontend runtime API routing"
+LAST_COMMIT: (Phase 8 commit) "Fix PWA configuration and service worker"
 
 ---
 
@@ -67,6 +67,81 @@ that was connected to nothing. Then STOP and await approval for Phase 8.
   `directUrl` semantics unchanged. Relations, nullability, and unique
   constraints verified matching all query usage (see inventory in session).
 - `git diff --check` clean. No API, auth, frontend, nginx, or dependency changes.
+
+## Completed Work (Phase 8)
+
+- Workbox precache fixed (verified, not assumed): `workbox.globDirectory:
+  './dist'` overrode the plugin default while the real Vite `outDir` is
+  `../dist` (`frontend/vite.config.ts`), so every build logged "One of the
+  glob patterns doesn't match any files" and precached only 3 entries
+  (0.00 KiB: 2 icons + webmanifest, no JS/CSS/HTML). Deleted the
+  `globDirectory` line; clean rebuild shows no glob warning and precache 34
+  entries (632.06 KiB); every precache URL verified resolving to a file in
+  `skillforge/dist/`, including `index.html`, JS, CSS, and
+  `manifest.webmanifest`.
+- Single canonical manifest (ADR-007): `dist/` previously held both a static
+  `manifest.json` (copy of `frontend/public/manifest.json`, with screenshot
+  refs to nonexistent `/screenshots/desktop.png` + `/mobile.png`) and the
+  plugin-generated `manifest.webmanifest`, with `index.html` linking both.
+  The plugin block is now canonical (start_url/scope/display/
+  background_color added; icons split into `any` 192+512 plus `maskable`
+  192+512; screenshots retargeted to the existing
+  `/screenshots/desktop.svg` + `/mobile.svg` as `image/svg+xml` with
+  matching sizes). Deleted `frontend/public/manifest.json` (sole referrer
+  was `index.html`, grep-verified) and removed the hardcoded manifest link
+  (plugin injects `/manifest.webmanifest`).
+- Icon paths fixed: `index.html` referenced root `/apple-touch-icon.png`
+  and `/masked-icon.svg` (both 404 — files live under `/icons/`), and
+  `includeAssets` listed a nonexistent root `favicon.ico`. Now
+  `/icons/apple-touch-icon.png`, `/icons/masked-icon.svg`, and
+  `includeAssets: ['vite.svg', 'icons/apple-touch-icon.png',
+  'icons/masked-icon.svg']` (all verified present). All PNG icons verified
+  real (PNG magic bytes, dims 192x192/512x512/180x180 match declarations).
+- Single SW registration (ADR-007): `main.tsx` called
+  `registerServiceWorker()` (`registerSW` + `confirm()` update dialog) while
+  `PWAUpdatePrompt` (mounted in `App.tsx`) called `useRegisterSW` (card
+  update UI) — two registrars, two competing update prompts. Deleted
+  `src/pwa/registerSW.ts`, removed the `main.tsx` call (sole registrar is
+  now `useRegisterSW`); moved the offline-ready toast into
+  `PWAUpdatePrompt.onOfflineReady` (reuses `src/pwa/offline-toast.css`) so
+  the existing offline-ready intent is preserved.
+- Authenticated-response caching removed (ADR-007, Step 10): the `api-cache`
+  runtime rule cached same-origin API GETs (including authenticated
+  `/api/courses/user`-class responses) in a shared static cache, and its
+  `urlPattern` evaluated `process.env` in SW scope (dead route code).
+  Removed. Remaining runtime caches are public static only
+  (images, JS/CSS, Google Fonts). `Offline.tsx` still reads `api-cache`
+  opportunistically and degrades to its empty state — page untouched.
+- Icon generator fixed: `scripts/create-pwa-icons.cjs` wrote to
+  `skillforge/public/icons` (wrong dir — frontend `publicDir` is
+  `frontend/public`) and never resolved `sharp` (lives in
+  `frontend/node_modules`, unresolvable from `scripts/`), always hitting the
+  no-op fallback. Now targets `frontend/public/icons` and resolves sharp
+  from the frontend dir; build log shows all 5 PNGs regenerated via sharp.
+- Browser verification (where environment permitted): production `dist/`
+  served over localhost; headless Chrome rendered the React shell with no
+  JS errors, and a fresh profile gained populated `Service
+  Worker/{CacheStorage,Database,ScriptCache}` (SW installed + caches
+  written). Offline-reload flow beyond that NOT EXECUTED (headless
+  dump-dom became unreliable after repeated runs); no "fully installable"
+  claim made.
+- `git diff --check` clean. No backend, auth, API, schema, Docker, nginx,
+  test, or dependency changes.
+
+## Verified Commands (Phase 8, actual output)
+
+| Command (workdir) | Result |
+|---|---|
+| `npm run build` (frontend: icons + `tsc -b` + `vite build`, clean `dist/`) | PASS — exit 0, precache 34 entries (632.06 KiB), no glob warning (was 3 entries / 0.00 KiB + warning) |
+| `npx tsc --noEmit -p tsconfig.app.json` (frontend) | PASS — exit 0 (unchanged) |
+| `npx tsc --noEmit -p tsconfig.node.json` (frontend) | PASS — exit 0 (unchanged) |
+| `npx eslint .` (frontend) | PASS — exit 0, 0 errors, same 3 react-refresh warnings as Phase 7 |
+| precache audit script (34 URLs vs `dist/`) | all resolve; `index.html`+JS+CSS+webmanifest included; no `api-cache`, no `process.env`, no `manifest.json` refs in `sw.js` |
+| icon audit (magic bytes + dims) | all 5 PNGs valid, dims match manifest |
+| HTTP serve (`manifest.webmanifest`, `sw.js`, icon) | 200 each |
+| headless-Chrome production load | shell renders, no JS errors; fresh profile SW CacheStorage/Database/ScriptCache populated |
+| `git diff --check` | clean (exit 0) |
+| Reviewer (`general` subagent per `.opencode/agents/reviewer.md`) | PASS (tsc app+node/eslint re-run; single-registrar + manifest + scope/secrets re-verified) |
 
 ## Completed Work (Phase 7)
 
@@ -555,6 +630,22 @@ Recorded but not re-run in this session (same environment, prior evidence):
 | `git diff --check` | clean (exit 0) |
 | Reviewer (`general` subagent per `.opencode/agents/reviewer.md`) | PASS (first run FAIL caught an untouched `/user` string mapping; fixed, re-verified, second run PASS) |
 
+## Files Changed in Current Phase (Phase 8)
+
+Modified: `frontend/vite.config.ts` (PWA plugin block only: manifest,
+`includeAssets`, `globDirectory` removal, `api-cache` removal),
+`frontend/index.html` (icon hrefs, manifest link),
+`frontend/src/main.tsx` (duplicate registrar removed),
+`frontend/src/components/PWAUpdatePrompt.tsx` (`onOfflineReady` toast),
+`scripts/create-pwa-icons.cjs` (output dir + sharp resolution). Deleted:
+`frontend/public/manifest.json` (duplicate manifest),
+`frontend/src/pwa/registerSW.ts` (duplicate registrar). Docs:
+`docs/DECISIONS.md` (ADR-007 decided),
+`docs/PRODUCTION_PLAN.md` (Phase 8 marked COMPLETE),
+`docs/PROJECT_STATE.md` (this file). No backend, auth-flow, schema,
+Docker, nginx, test, or dependency changes. (`tsconfig.*.tsbuildinfo`
+churn from typecheck runs reverted, uncommitted.)
+
 ## Files Changed in Current Phase (Phase 7)
 
 Deleted after zero-reference verification (grep + `tsc` exit 0):
@@ -739,6 +830,20 @@ Recorded for later phases; do not fix early.
 - Phase 8: placeholder text PNG icons in `frontend/Dockerfile`; missing
   root `apple-touch-icon.png`/`masked-icon.svg`; manifest screenshots mismatch;
   triple SW registration + two update prompts; empty workbox precache.
+- Phase 8 (residual, verified 2026-09-24): precache 34 entries/632 KiB, no
+  glob warning; single generated manifest; single SW registrar
+  (`useRegisterSW` in `PWAUpdatePrompt`); icons real with correct paths;
+  `api-cache` removed (no authed data in SW caches); `tsc` app+node green,
+  eslint exit 0 (3 warnings). Remaining by design: `frontend/Dockerfile`
+  still writes text-placeholder `.png` files and `sed`-strips `tsc -b` from
+  the build (Phase 10 owns the image); `frontend/public/pwa-config.js` is
+  an inert copied asset, never registered as a worker (left untouched);
+  `frontend/public/screenshots/app-mockup-new.svg` is 0 bytes and
+  unreferenced (left untouched); `Offline.tsx` still opens the now-never-
+  populated `api-cache` and shows its empty state (page behavior unchanged);
+  offline-reload and install-prompt flows NOT EXECUTED beyond SW
+  install + cache population (no "fully installable" claim); vitest
+  untouched → Phase 9.
 - Phase 9: broken/outdated Navbar & Features tests; backend `auth.test.ts` has
   no assertions; jest 70% coverage thresholds unachievable.
 - Phase 10: `docker-setup.ps1` references missing `.env.example`; deprecated
@@ -760,6 +865,8 @@ Phase 6 added ADR-005 (idempotent seed via lookup guards; FK lookup indexes
 via forward migration; no field inventions, no transactions).
 Phase 7 added ADR-006 (backend singular `quiz` wins; frontend aligned;
 no invented defaults).
+Phase 8 added ADR-007 (single generated manifest; single SW registrar;
+no API-response runtime caching; icon-generator dir/sharp fix).
 
 ## Risks
 
@@ -782,6 +889,6 @@ no invented defaults).
 
 ## Next Allowed Action
 
-Phase 7 gate PASSED (reviewer PASS 2026-09-24). STOP. Await explicit
-instruction to begin Phase 8 (PWA). Do not
-start Phase 8 automatically.
+Phase 8 gate PASSED (reviewer PASS 2026-09-24). STOP. Await explicit
+instruction to begin Phase 9 (Testing). Do not
+start Phase 9 automatically.

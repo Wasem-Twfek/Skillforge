@@ -221,7 +221,7 @@ PHASE 7 GATE:
 
 ---
 
-## PHASE 8 — PWA
+## PHASE 8 — PWA (COMPLETE 2026-09-24, reviewer PASS)
 
 - Objective: fix PWA config and assets using existing `vite-plugin-pwa`
   configuration: real icons (keep the sharp-based generator already in

@@ -7,7 +7,8 @@ const { execSync } = require('child_process');
  * This will check if the icon files exist and create them from SVGs if they don't
  */
 
-const ICONS_DIR = path.join(__dirname, '..', 'public', 'icons');
+const ICONS_DIR = path.join(__dirname, '..', 'frontend', 'public', 'icons');
+const FRONTEND_DIR = path.join(__dirname, '..', 'frontend');
 const ICON_SIZES = [192, 512];
 
 // Check if directory exists, create it if it doesn't
@@ -51,11 +52,18 @@ if (!fs.existsSync(maskableSvg512Path)) {
 // Function to convert SVG to PNG
 const convertSvgToPng = (svgPath, pngPath, size) => {
   try {
-    // Check if sharp is installed
+    // sharp is a frontend devDependency: resolve it from the frontend
+    // directory (this script lives in <root>/scripts, which cannot resolve
+    // <root>/frontend/node_modules on its own).
+    let sharp;
     try {
-      require.resolve('sharp');
+      const sharpPath = require.resolve('sharp', { paths: [FRONTEND_DIR, __dirname] });
+      sharp = require(sharpPath);
+    } catch (e) {
+      sharp = null;
+    }
+    if (sharp) {
       // Use sharp for conversion if available
-      const sharp = require('sharp');
       sharp(svgPath)
         .resize(size, size)
         .png()
@@ -66,7 +74,7 @@ const convertSvgToPng = (svgPath, pngPath, size) => {
         .catch(err => {
           console.error(`❌ Error generating ${pngPath}:`, err);
         });
-    } catch (e) {
+    } else {
       // Fallback to simple FS copy if sharp is not available
       console.log(`⚠️ Sharp not available, copying SVG file instead`);
       fs.copyFileSync(svgPath, pngPath.replace('.png', '.svg'));
