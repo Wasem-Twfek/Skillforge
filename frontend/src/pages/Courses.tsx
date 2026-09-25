@@ -7,7 +7,6 @@ import { useAuth } from '../contexts/AuthContext';
 import lessonService, { Lesson } from '../services/lessonService';
 import LessonCard from '../components/LessonCard';
 
-// Sample difficulty data to enhance the UI - in a real app, this would come from the backend
 const getDifficultyForTitle = (title: string): 'beginner' | 'intermediate' | 'advanced' => {
   const lowerTitle = title.toLowerCase();
   if (lowerTitle.includes('introduction') || lowerTitle.includes('basics')) {
@@ -18,7 +17,6 @@ const getDifficultyForTitle = (title: string): 'beginner' | 'intermediate' | 'ad
   return 'intermediate';
 };
 
-// Sample duration data - in a real app, this would come from the backend
 const getDurationForTitle = (title: string): number => {
   const lowerTitle = title.toLowerCase();
   if (lowerTitle.includes('introduction')) {
@@ -28,29 +26,21 @@ const getDurationForTitle = (title: string): number => {
   } else if (lowerTitle.includes('advanced')) {
     return 60;
   }
-  return 35; // Default duration
+  return 35;
 };
 
 const Courses: React.FC = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const [searchQuery, setSearchQuery] = useState(searchParams.get('search') || '');
-
-  // Fetch lessons
   const { data: lessons, isLoading: isLoadingLessons } = useQuery<Lesson[], Error>({
     queryKey: ['lessons'],
     queryFn: () => lessonService.getAllLessons(),
   });
-
-  // Update URL when filters change
   useEffect(() => {
     const params = new URLSearchParams();
     if (searchQuery) params.set('search', searchQuery);
     setSearchParams(params);
   }, [searchQuery, setSearchParams]);
-
-
-
-  // Filter lessons based on search query
   const getFilteredLessons = () => {
     if (!lessons) return [];
     
@@ -65,14 +55,11 @@ const Courses: React.FC = () => {
   };
 
   const filteredLessons = getFilteredLessons();
-
-  // Get authentication state and user's enrolled courses
   const { user } = useAuth();
   const { data: userCourses } = useUserCourses();
   
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
-      {/* Hero section with welcome message */}
       <div className="bg-gradient-to-r from-blue-600 to-indigo-700 dark:from-blue-800 dark:to-indigo-900">
         <div className="container mx-auto px-4 py-12">
           {user ? (
@@ -107,7 +94,6 @@ const Courses: React.FC = () => {
       </div>
 
       <div className="container mx-auto px-4 py-8">
-        {/* User's enrolled courses section */}
         {user && userCourses && userCourses.length > 0 && (
           <div className="mb-12">
             <div className="flex justify-between items-center mb-6">
@@ -155,11 +141,8 @@ const Courses: React.FC = () => {
             </div>
           </div>
         )}
-
-        {/* Lessons Header */}
         <div className="mb-6">
           <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
-            {/* Lessons title */}
             <div className="bg-white dark:bg-gray-800 rounded-t-xl shadow-sm px-6 py-4">
               <div className="flex items-center">
                 <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2 text-blue-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -178,12 +161,7 @@ const Courses: React.FC = () => {
               />
             </div>
           </div>
-
-          {/* No filters section needed */}
-
-          {/* Lessons content */}
           <div className="bg-white dark:bg-gray-800 rounded-b-xl rounded-tr-xl shadow-md p-6">
-            {/* Lessons header with count */}
             <div className="flex justify-between items-center mb-6">
               <h2 className="text-xl font-bold text-gray-900 dark:text-white flex items-center">
                 <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 mr-2 text-blue-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -200,11 +178,8 @@ const Courses: React.FC = () => {
                 </div>
               )}
             </div>
-              
-              {/* Lessons grid */}
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {isLoadingLessons ? (
-                  // Loading skeletons for lessons
                   Array(6).fill(0).map((_, index) => (
                     <div key={index} className="bg-white dark:bg-gray-800 rounded-lg shadow-lg overflow-hidden animate-pulse border border-gray-100 dark:border-gray-700">
                       <div className="h-48 bg-gray-300 dark:bg-gray-700"></div>
@@ -253,34 +228,7 @@ const Courses: React.FC = () => {
                     />
                   ))
                 )}
-              </div>
-              
-              {/* Pagination placeholder - can be implemented in the future */}
-              {filteredLessons.length > 0 && (
-                <div className="mt-8 flex justify-center">
-                  <nav className="inline-flex rounded-md shadow-sm -space-x-px" aria-label="Pagination">
-                    <a href="#" className="relative inline-flex items-center px-2 py-2 rounded-l-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-sm font-medium text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700">
-                      <span className="sr-only">Previous</span>
-                      <svg className="h-5 w-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
-                        <path fillRule="evenodd" d="M12.707 5.293a1 1 0 010 1.414L9.414 10l3.293 3.293a1 1 0 01-1.414 1.414l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 0z" clipRule="evenodd" />
-                      </svg>
-                    </a>
-                    <a href="#" className="relative inline-flex items-center px-4 py-2 border border-gray-300 dark:border-gray-600 bg-blue-50 dark:bg-blue-900/30 text-sm font-medium text-blue-600 dark:text-blue-400 hover:bg-blue-100 dark:hover:bg-blue-900/50">
-                      1
-                    </a>
-                    <a href="#" className="relative inline-flex items-center px-4 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700">
-                      2
-                    </a>
-                    <a href="#" className="relative inline-flex items-center px-2 py-2 rounded-r-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-sm font-medium text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700">
-                      <span className="sr-only">Next</span>
-                      <svg className="h-5 w-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
-                        <path fillRule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clipRule="evenodd" />
-                      </svg>
-                    </a>
-                  </nav>
-                </div>
-              )}
-            </div>
+              </div>            </div>
         </div>
       </div>
     </div>

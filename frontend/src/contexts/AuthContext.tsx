@@ -1,16 +1,5 @@
 import React, { createContext, useState, useContext, useEffect, ReactNode } from 'react';
 
-// Import API URL from environment (nullish keeps a production empty string
-// relative; only undefined/null fall back to dev). The fallback is relative
-// so profile updates stay same-origin through the dev proxy, matching every
-// other API call (an absolute fallback would bypass the proxy and fail CORS
-// on non-default origins).
-const API_URL = import.meta.env?.VITE_API_URL ?? '';
-
-// Auth calls use relative /api/auth/* paths so they resolve through the dev
-// proxy and the production nginx rewrite in the same way. Absolute /auth/*
-// URLs bypass both and break behind nginx, so they are not used here.
-
 // User interface
 export interface User {
   id: string;
@@ -18,6 +7,21 @@ export interface User {
   email: string;
   bio?: string;
   avatar?: string;
+}
+
+function normalizeUser(value: Record<string, unknown>): User {
+  return {
+    id: String(value.id ?? ''),
+    name: String(value.name ?? ''),
+    email: String(value.email ?? ''),
+    bio: typeof value.bio === 'string' ? value.bio : undefined,
+    avatar:
+      typeof value.avatar === 'string'
+        ? value.avatar
+        : typeof value.picture === 'string'
+          ? value.picture
+          : undefined,
+  };
 }
 
 // Login credentials interface
@@ -78,7 +82,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     
     const checkAuth = async () => {
       if (!token) {
-        console.log('AuthContext: No token found, setting user to null');
+
         if (isMounted) {
           setUser(null);
         }
@@ -86,7 +90,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       }
 
       try {
-        console.log('AuthContext: Checking auth with token:', token?.substring(0, 10) + '...');
+
         if (isMounted) {
           setIsLoading(true);
         }
@@ -99,30 +103,24 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
           },
           credentials: 'include',
         });
-        
-        console.log('AuthContext: Response status:', response.status);
-        
+
         if (!response.ok) {
-          const errorText = await response.text();
-          console.error('AuthContext: Auth check failed with status:', response.status, 'Response:', errorText);
+  
           throw new Error('Failed to get user profile');
         }
         
         const userData = await response.json();
-        console.log('AuthContext: User data received:', userData);
-        
+
         // Ensure we have valid user data
         if (!userData || !userData.id) {
-          console.error('AuthContext: Invalid user data received:', userData);
           throw new Error('Invalid user data');
         }
         
         if (isMounted) {
-          setUser(userData);
-          console.log('AuthContext: User authenticated successfully');
+          setUser(normalizeUser(userData));
+
         }
       } catch (err) {
-        console.error('AuthContext: Auth check failed:', err);
         if (isMounted) {
           localStorage.removeItem('token');
           setToken(null);
@@ -136,7 +134,6 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       }
     };
 
-    console.log('AuthContext: Token changed, checking auth...');
     checkAuth();
     
     return () => {
@@ -172,11 +169,10 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       // Store token and user data
       localStorage.setItem('token', data.token);
       setToken(data.token);
-      setUser(data.user);
+      setUser(normalizeUser(data.user));
       
       return true;
     } catch (err: unknown) {
-      console.error('Email login error:', err);
       setError(err instanceof Error ? err.message : 'Failed to login. Please check your credentials.');
       return false;
     } finally {
@@ -208,11 +204,10 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       // Store token and user data
       localStorage.setItem('token', responseData.token);
       setToken(responseData.token);
-      setUser(responseData.user);
+      setUser(normalizeUser(responseData.user));
       
       return true;
     } catch (err: unknown) {
-      console.error('Registration error:', err);
       setError(err instanceof Error ? err.message : 'Failed to register. Please try again.');
       return false;
     } finally {
@@ -221,7 +216,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   };
 
   const logout = () => {
-    console.log('Logging out user');
+
     localStorage.removeItem('token');
     setToken(null);
     setUser(null);
@@ -235,7 +230,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     
     try {
       setIsLoading(true);
-      const response = await fetch(`${API_URL}/api/users/profile`, {
+      const response = await fetch('/api/users/profile', {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -252,7 +247,6 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       const updatedUser = await response.json();
       setUser({ ...user, ...updatedUser });
     } catch (err) {
-      console.error('Profile update error:', err);
       setError('Failed to update profile. Please try again.');
       throw err;
     } finally {
@@ -268,8 +262,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const fetchUserProfile = async (newToken: string): Promise<boolean> => {
     try {
       setIsLoading(true);
-      console.log('Fetching user profile with token:', newToken.substring(0, 10) + '...');
-      
+
       const response = await fetch(`/api/auth/me`, {
         headers: {
           Authorization: `Bearer ${newToken}`,
@@ -278,21 +271,18 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       });
       
       if (!response.ok) {
-        console.error('Failed to get user profile - Response status:', response.status);
         throw new Error('Failed to get user profile');
       }
       
       const userData = await response.json();
-      console.log('User data received:', userData);
-      
+
       // Ensure we have valid user data
       if (!userData || !userData.id) {
-        console.error('Invalid user data received:', userData);
         throw new Error('Invalid user data');
       }
       
       // Update state with user data and token
-      setUser(userData);
+      setUser(normalizeUser(userData));
       setToken(newToken);
       
       // Ensure token is stored in localStorage
@@ -300,7 +290,6 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       
       return true;
     } catch (err) {
-      console.error('Failed to fetch user profile:', err);
       return false;
     } finally {
       setIsLoading(false);

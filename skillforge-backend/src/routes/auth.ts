@@ -82,17 +82,21 @@ router.get('/google', (req, res) => {
   // cookie when it is consumed.
   const state = generateState();
 
-  // Lax allows the top-level Google -> backend callback navigation to carry
-  // the cookie; Secure is production-only so local HTTP development keeps
-  // working (localhost is a secure context, so prod HTTP localhost is fine).
+  // Use Secure only when the public frontend URL is HTTPS. The Docker
+  // development stack runs in production mode on http://localhost, where a
+  // Secure cookie would prevent the OAuth callback from receiving the state.
   res.cookie(OAUTH_STATE_COOKIE, state, {
     httpOnly: true,
-    secure: config.NODE_ENV === 'production',
+    secure: config.FRONTEND_URL.startsWith('https://'),
     sameSite: 'lax',
     path: '/',
     maxAge: 10 * 60 * 1000, // 10 minutes
   });
   
+  if (!GOOGLE_CLIENT_ID || !GOOGLE_CLIENT_SECRET || !GOOGLE_REDIRECT_URI) {
+    return res.status(503).json({ error: 'Google OAuth is not configured' });
+  }
+
   const params = new URLSearchParams({
     client_id: GOOGLE_CLIENT_ID,
     redirect_uri: GOOGLE_REDIRECT_URI,
@@ -149,7 +153,7 @@ router.get('/google/callback', async (req, res) => {
       access_token: string;
     }
     
-    const { id_token, access_token } = tokenRes.data as GoogleTokenResponse;
+    const { id_token } = tokenRes.data as GoogleTokenResponse;
     if (!id_token) throw new Error('No id_token returned from Google');
 
     // Verify ID token

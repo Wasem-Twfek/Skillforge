@@ -1,11 +1,5 @@
 /// <reference types="jest" />
 
-// Regression coverage for the Phase 6 NaN-progress fix in
-// `POST /api/courses/:id/progress` (src/routes/courses.ts).
-// The guard `totalLessons > 0 ? ... : 0` prevents 0/0 = NaN (which JSON
-// serializes as null) for courses with zero lessons. This test exercises
-// the real route handler with mocked persistence and a stubbed auth gate.
-
 import express from 'express';
 import coursesRouter from '../courses';
 import prisma from '../../lib/prisma';
@@ -30,18 +24,24 @@ jest.mock('../../lib/prisma', () => ({
   default: {
     course: { findMany: jest.fn(), findUnique: jest.fn() },
     enrollment: { findMany: jest.fn(), findFirst: jest.fn(), create: jest.fn() },
-    lesson: { findMany: jest.fn(), count: jest.fn() },
-    lessonProgress: { upsert: jest.fn(), count: jest.fn() },
+    lesson: { findMany: jest.fn(), findFirst: jest.fn(), count: jest.fn() },
+    lessonProgress: {
+      upsert: jest.fn(),
+      count: jest.fn(),
+      deleteMany: jest.fn(),
+    },
   },
 }));
 
-type MockedPrisma = {
+const mocked = prisma as unknown as {
   enrollment: { findFirst: jest.Mock };
-  lesson: { count: jest.Mock };
-  lessonProgress: { upsert: jest.Mock; count: jest.Mock };
+  lesson: { findFirst: jest.Mock; count: jest.Mock };
+  lessonProgress: {
+    upsert: jest.Mock;
+    count: jest.Mock;
+    deleteMany: jest.Mock;
+  };
 };
-
-const mocked = prisma as unknown as MockedPrisma;
 
 const buildApp = () => {
   const app = express();
@@ -50,7 +50,7 @@ const buildApp = () => {
   return app;
 };
 
-describe('POST /api/courses/:id/progress (NaN guard)', () => {
+describe('POST /api/courses/:id/progress', () => {
   let server: import('http').Server;
   let baseUrl: string;
 
@@ -71,6 +71,7 @@ describe('POST /api/courses/:id/progress (NaN guard)', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     mocked.enrollment.findFirst.mockResolvedValue({ id: 'enroll-1' });
+    mocked.lesson.findFirst.mockResolvedValue({ id: 'lesson-1' });
   });
 
   it('returns progress 0 (not NaN/null) for a course with zero lessons', async () => {
@@ -96,12 +97,13 @@ describe('POST /api/courses/:id/progress (NaN guard)', () => {
     const res = await fetch(`${baseUrl}/api/courses/course-1/progress`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ lessonId: 'lesson-2', completed: true }),
+      body: JSON.stringify({ lessonId: 'lesson-1', completed: true }),
     });
 
     expect(res.status).toBe(200);
     const body = (await res.json()) as { progress: number };
     expect(body.progress).toBe(67);
+    expect(mocked.lessonProgress.upsert).toHaveBeenCalled();
   });
 
   it('returns 404 when the caller is not enrolled', async () => {
@@ -114,5 +116,38 @@ describe('POST /api/courses/:id/progress (NaN guard)', () => {
     });
 
     expect(res.status).toBe(404);
+  });
+
+  it('rejects a lesson that belongs to another course', async () => {
+    mocked.lesson.findFirst.mockResolvedValue(null);
+
+    const res = await fetch(`${baseUrl}/api/courses/course-1/progress`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ lessonId: 'lesson-other-course', completed: true }),
+    });
+
+    expect(res.status).toBe(400);
+    expect(mocked.lessonProgress.upsert).not.toHaveBeenCalled();
+  });
+
+  it('removes progress when a lesson is marked incomplete', async () => {
+    mocked.lesson.count.mockResolvedValue(2);
+    mocked.lessonProgress.count.mockResolvedValue(1);
+
+    const res = await fetch(`${baseUrl}/api/courses/course-1/progress`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ lessonId: 'lesson-1', completed: false }),
+    });
+
+    expect(res.status).toBe(200);
+    expect(mocked.lessonProgress.deleteMany).toHaveBeenCalledWith({
+      where: {
+        userId: 'user-1',
+        lessonId: 'lesson-1',
+        enrollmentId: 'enroll-1',
+      },
+    });
   });
 });

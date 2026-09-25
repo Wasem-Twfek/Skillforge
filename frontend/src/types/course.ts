@@ -13,11 +13,13 @@ export interface Lesson {
     type: 'pdf' | 'link' | 'code';
   }[];
   quiz?: {
+    id?: string;
+    title?: string;
     questions: {
       id: string;
       question: string;
       options: string[];
-      correctAnswer: number;
+      correctAnswer?: number;
     }[];
   };
 }

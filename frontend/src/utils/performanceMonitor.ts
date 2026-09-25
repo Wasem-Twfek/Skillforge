@@ -41,7 +41,7 @@ export function initPerformanceMonitoring(): void {
   // Only run in production or when explicitly enabled
   if (process.env.NODE_ENV !== 'production' &&
       import.meta.env?.VITE_ENABLE_PERFORMANCE_MONITORING !== 'true') {
-    console.log('Performance monitoring disabled in development mode');
+
     return;
   }
   
@@ -54,7 +54,7 @@ export function initPerformanceMonitoring(): void {
         if (entries.length > 0) {
           const fcp = entries[0];
           metrics.FCP = fcp.startTime;
-          console.log(`FCP: ${metrics.FCP}ms`);
+
         }
       });
       fcpObserver.observe({ type: 'paint', buffered: true });
@@ -65,7 +65,7 @@ export function initPerformanceMonitoring(): void {
         if (entries.length > 0) {
           const lcp = entries[entries.length - 1];
           metrics.LCP = lcp.startTime;
-          console.log(`LCP: ${metrics.LCP}ms`);
+
         }
       });
       lcpObserver.observe({ type: 'largest-contentful-paint', buffered: true });
@@ -81,7 +81,7 @@ export function initPerformanceMonitoring(): void {
         if (entries.length > 0) {
           const fid = entries[0] as FirstInputEntry;
           metrics.FID = fid.processingStart - fid.startTime;
-          console.log(`FID: ${metrics.FID}ms`);
+
         }
       });
       fidObserver.observe({ type: 'first-input', buffered: true });
@@ -122,8 +122,7 @@ export function trackRouteChange(route: string, startTime: number): void {
   }
   
   metrics.routeChangeTime[route].push(duration);
-  
-  console.log(`Route change to ${route}: ${duration.toFixed(2)}ms`);
+
 }
 
 /**

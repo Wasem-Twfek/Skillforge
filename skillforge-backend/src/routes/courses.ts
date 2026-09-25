@@ -1,6 +1,6 @@
 import express from 'express';
 import prisma from '../lib/prisma';
-import { Request, Response, NextFunction } from 'express';
+import { Request } from 'express';
 import { authenticate } from '../middleware/auth';
 
 const router = express.Router();
@@ -111,13 +111,33 @@ router.get('/user', authenticate, async (req: Request, res) => {
 // Get all lessons for a course (used by the course detail UI)
 router.get('/:id/lessons', async (req, res) => {
   try {
+    const course = await prisma.course.findUnique({
+      where: { id: req.params.id },
+      select: { id: true },
+    });
+
+    if (!course) {
+      return res.status(404).json({ error: 'Course not found' });
+    }
+
     const lessons = await prisma.lesson.findMany({
       where: { courseId: req.params.id },
       orderBy: { order: 'asc' },
+      include: {
+        quiz: {
+          select: {
+            id: true,
+          },
+        },
+      },
     });
+
     res.json(lessons);
   } catch (error) {
-    console.error('Error fetching course lessons:', error instanceof Error ? error.message : 'unknown error');
+    console.error(
+      'Error fetching course lessons:',
+      error instanceof Error ? error.message : 'unknown error',
+    );
     res.status(500).json({ error: 'Failed to fetch course lessons' });
   }
 });
@@ -138,9 +158,6 @@ router.get('/:id', async (req, res) => {
         },
         lessons: {
           orderBy: { order: 'asc' },
-          include: {
-            quiz: true,
-          },
         },
       },
     });
@@ -223,7 +240,26 @@ router.post('/:id/progress', authenticate, async (req: Request, res) => {
       return res.status(404).json({ error: 'Not enrolled in this course' });
     }
 
-    // Update progress
+    if (!lessonId || typeof completed !== 'boolean') {
+      return res.status(400).json({
+        error: 'lessonId and completed are required',
+      });
+    }
+
+    const lesson = await prisma.lesson.findFirst({
+      where: {
+        id: lessonId,
+        courseId,
+      },
+      select: { id: true },
+    });
+
+    if (!lesson) {
+      return res.status(400).json({
+        error: 'Lesson does not belong to this course',
+      });
+    }
+
     if (completed) {
       await prisma.lessonProgress.upsert({
         where: {
@@ -234,12 +270,21 @@ router.post('/:id/progress', authenticate, async (req: Request, res) => {
         },
         update: {
           completedAt: new Date(),
+          enrollmentId: enrollment.id,
         },
         create: {
           userId,
           lessonId,
           enrollmentId: enrollment.id,
           completedAt: new Date(),
+        },
+      });
+    } else {
+      await prisma.lessonProgress.deleteMany({
+        where: {
+          userId,
+          lessonId,
+          enrollmentId: enrollment.id,
         },
       });
     }

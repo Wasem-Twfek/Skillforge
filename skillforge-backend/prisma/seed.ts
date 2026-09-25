@@ -4,17 +4,24 @@ import bcrypt from 'bcrypt';
 const prisma = new PrismaClient();
 
 async function main() {
-  // Development-only demo seed. The credentials below are local-dev
-  // placeholders (never production secrets); the password is bcrypt-hashed
-  // before storage, exactly like the live registration path.
-  // Create an instructor
+  if (process.env.NODE_ENV === 'production') {
+    throw new Error('The development seed cannot run in production');
+  }
+
+  // Development-only demo seed. Supply the demo account password through
+  // SEED_INSTRUCTOR_PASSWORD instead of keeping credentials in source code.
+  const seedPassword = process.env.SEED_INSTRUCTOR_PASSWORD;
+  if (!seedPassword) {
+    throw new Error('SEED_INSTRUCTOR_PASSWORD is required to run the seed');
+  }
+
   const instructor = await prisma.user.upsert({
     where: { email: 'instructor@example.com' },
     update: {},
     create: {
       email: 'instructor@example.com',
       name: 'John Doe',
-      password: await bcrypt.hash('password123', 10),
+      password: await bcrypt.hash(seedPassword, 10),
     },
   });
 
@@ -75,6 +82,44 @@ async function main() {
         },
       }),
     ]);
+  }
+
+  const javascriptLesson = await prisma.lesson.findFirst({
+    where: {
+      courseId: course.id,
+      title: 'JavaScript Introduction',
+    },
+    select: { id: true },
+  });
+
+  if (javascriptLesson) {
+    await prisma.quiz.upsert({
+      where: { lessonId: javascriptLesson.id },
+      update: {},
+      create: {
+        title: 'JavaScript Basics',
+        lessonId: javascriptLesson.id,
+        questions: [
+          {
+            id: 'js-q1',
+            question: 'What is JavaScript?',
+            options: [
+              'A markup language',
+              'A programming language',
+              'A styling language',
+              'A database language',
+            ],
+            correctAnswer: 1,
+          },
+          {
+            id: 'js-q2',
+            question: 'Which keyword declares a block-scoped variable?',
+            options: ['var', 'let', 'function', 'class'],
+            correctAnswer: 1,
+          },
+        ],
+      },
+    });
   }
 
   console.log('Seed data created successfully');

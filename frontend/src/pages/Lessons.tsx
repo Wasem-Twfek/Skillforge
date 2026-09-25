@@ -2,7 +2,6 @@ import { useQuery } from '@tanstack/react-query';
 import lessonService, { Lesson } from '../services/lessonService';
 import LessonCard from '../components/LessonCard';
 
-// Sample difficulty data to enhance the UI - in a real app, this would come from the backend
 const getDifficultyForTitle = (title: string): 'beginner' | 'intermediate' | 'advanced' => {
   const lowerTitle = title.toLowerCase();
   if (lowerTitle.includes('introduction') || lowerTitle.includes('basics')) {
@@ -13,7 +12,6 @@ const getDifficultyForTitle = (title: string): 'beginner' | 'intermediate' | 'ad
   return 'intermediate';
 };
 
-// Sample duration data - in a real app, this would come from the backend
 const getDurationForTitle = (title: string): number => {
   const lowerTitle = title.toLowerCase();
   if (lowerTitle.includes('introduction')) {
@@ -23,7 +21,7 @@ const getDurationForTitle = (title: string): number => {
   } else if (lowerTitle.includes('advanced')) {
     return 60;
   }
-  return 35; // Default duration
+  return 35;
 };
 
 export default function Lessons() {
@@ -88,7 +86,7 @@ export default function Lessons() {
   return (
     <div className="container mx-auto px-4 py-12 bg-white dark:bg-gray-900 transition-colors duration-300">
       <h1 className="text-3xl font-bold mb-2 text-gray-900 dark:text-white">Available Lessons</h1>
-      <p className="text-gray-600 dark:text-gray-400 mb-8">Explore our courses and start learning today</p>
+      <p className="text-gray-600 dark:text-gray-400 mb-8">Browse the available lessons.</p>
       
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {lessons.map((lesson) => (
@@ -100,7 +98,7 @@ export default function Lessons() {
             difficulty={getDifficultyForTitle(lesson.title)}
             duration={getDurationForTitle(lesson.title)}
             progress={lesson.progress || 0}
-            imageUrl={lesson.imageUrl} // Will use placeholder if undefined
+            imageUrl={lesson.imageUrl}
           />
         ))}
       </div>

@@ -5,11 +5,14 @@ export interface Lesson {
   title: string;
   description: string;
   content: string;
-  // The backend Lesson <-> Quiz relation is one-to-one (Quiz.lessonId is
-  // @unique) and the API embeds it as singular `quiz`, not `quizzes[]`.
-  quiz?: Quiz | null;
+  videoUrl?: string | null;
+  courseId: string;
+  order: number;
   progress?: number;
   imageUrl?: string;
+  quiz?: Quiz | null;
+  createdAt: string;
+  updatedAt: string;
 }
 
 export interface Quiz {
@@ -23,7 +26,6 @@ export interface Question {
   id: string;
   question: string;
   options: string[];
-  correctAnswer: number;
 }
 
 const lessonService = {
@@ -33,9 +35,9 @@ const lessonService = {
   },
 
   async getLesson(id: string): Promise<Lesson> {
-    const response = await axiosInstance.get(`/api/lessons/${id}`);
+    const response = await axiosInstance.get('/api/lessons/' + id);
     return response.data;
   },
 };
 
-export default lessonService; 
+export default lessonService;

@@ -4,20 +4,12 @@ import { Link } from 'react-router-dom';
 const Offline: React.FC = () => {
   const [cachedCourses, setCachedCourses] = useState<string[]>([]);
   
-  useEffect(() => {
-    // This is a simplified example - in a real app, you would check
-    // your cached data from IndexedDB or other storage
-    const checkCachedContent = async () => {
-      try {
-        // Example of how you might check for cached courses
-        // In a real implementation, you'd use IndexedDB or another storage method
-        const cache = await caches.open('api-cache');
+  useEffect(() => {    const checkCachedContent = async () => {
+      try {        const cache = await caches.open('api-cache');
         const keys = await cache.keys();
         const courseUrls = keys
           .filter(request => request.url.includes('/api/courses'))
-          .map(request => {
-            // Extract course ID or name from URL
-            const urlParts = request.url.split('/');
+          .map(request => {            const urlParts = request.url.split('/');
             return urlParts[urlParts.length - 1];
           });
         
