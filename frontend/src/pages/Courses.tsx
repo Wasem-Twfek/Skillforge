@@ -112,7 +112,7 @@ const Courses: React.FC = () => {
           <div className="mb-12">
             <div className="flex justify-between items-center mb-6">
               <h2 className="text-2xl font-bold dark:text-white">Continue Learning</h2>
-              <Link to="/my-courses" className="text-blue-600 dark:text-blue-400 hover:underline font-medium">View All</Link>
+              <Link to="/dashboard" className="text-blue-600 dark:text-blue-400 hover:underline font-medium">View All</Link>
             </div>
             
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
@@ -196,7 +196,7 @@ const Courses: React.FC = () => {
               </h2>
               {searchQuery && (
                 <div className="text-sm text-gray-500 dark:text-gray-400">
-                  Search results for: <span className="font-medium text-gray-700 dark:text-gray-300">"{searchQuery}"</span>
+                  Search results for: <span className="font-medium text-gray-700 dark:text-gray-300">&quot;{searchQuery}&quot;</span>
                 </div>
               )}
             </div>

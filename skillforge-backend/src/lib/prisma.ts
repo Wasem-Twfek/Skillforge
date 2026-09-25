@@ -8,13 +8,15 @@ declare global {
 }
 
 // Create a singleton instance of PrismaClient with explicit connection URL
+// Query/info logging is restricted to development: query logs are verbose and
+// can carry row data, so production and test run error-only.
 const prisma = global.prisma || new PrismaClient({
   datasources: {
     db: {
       url: config.DATABASE_URL,
     },
   },
-  log: ['query', 'info', 'warn', 'error'],
+  log: process.env.NODE_ENV === 'development' ? ['query', 'warn', 'error'] : ['error'],
 });
 
 // Save prisma client to global in development to prevent multiple instances

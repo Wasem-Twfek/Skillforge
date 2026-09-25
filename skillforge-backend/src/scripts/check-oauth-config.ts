@@ -16,35 +16,24 @@ const isConfigured = checkGoogleOAuthEnv();
 if (isConfigured) {
   console.log('✅ Google OAuth is properly configured');
   
-  // Check callback URL structure
-  const callbackUrl = process.env.GOOGLE_CALLBACK_URL;
+  // Check callback URL structure (presence/structure only — never print values)
+  const callbackUrl = process.env.GOOGLE_REDIRECT_URI;
   if (callbackUrl) {
     try {
       const url = new URL(callbackUrl);
-      console.log('Callback URL is valid:', url.toString());
+      console.log('Callback URL has valid format');
       console.log('Protocol:', url.protocol);
-      console.log('Host:', url.host);
-      console.log('Pathname:', url.pathname);
     } catch (error) {
-      console.error('⚠️ Invalid callback URL format:', callbackUrl);
+      console.error('⚠️ Invalid callback URL format');
     }
   }
   
-  // Generate a test OAuth URL
+  // Generate a test OAuth URL (do not print it — it embeds the client ID)
   const clientId = process.env.GOOGLE_CLIENT_ID;
-  const redirectUri = process.env.GOOGLE_CALLBACK_URL;
+  const redirectUri = process.env.GOOGLE_REDIRECT_URI;
   
   if (clientId && redirectUri) {
-    const googleAuthUrl = new URL('https://accounts.google.com/o/oauth2/v2/auth');
-    googleAuthUrl.searchParams.append('client_id', clientId);
-    googleAuthUrl.searchParams.append('redirect_uri', redirectUri);
-    googleAuthUrl.searchParams.append('response_type', 'code');
-    googleAuthUrl.searchParams.append('scope', 'profile email openid');
-    googleAuthUrl.searchParams.append('access_type', 'offline');
-    googleAuthUrl.searchParams.append('prompt', 'consent');
-    
-    console.log('\nTest OAuth URL:');
-    console.log(googleAuthUrl.toString());
+    console.log('\nTest OAuth URL can be constructed (not printed to avoid leaking client ID).');
   }
 } else {
   console.error('❌ Google OAuth configuration is incomplete');

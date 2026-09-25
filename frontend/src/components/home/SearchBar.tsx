@@ -18,10 +18,10 @@ const SearchBar = () => {
     }
     
     // Filter courses based on search query
-    const filteredCourses = mockCourses.filter(course => 
-      course.title.toLowerCase().includes(query.toLowerCase()) || 
+    const filteredCourses = mockCourses.filter(course =>
+      course.title.toLowerCase().includes(query.toLowerCase()) ||
       course.description.toLowerCase().includes(query.toLowerCase()) ||
-      course.tags.some(tag => tag.toLowerCase().includes(query.toLowerCase()))
+      (course.tags ?? []).some(tag => tag.toLowerCase().includes(query.toLowerCase()))
     ).slice(0, 5); // Limit to 5 results
     
     setSearchResults(filteredCourses);
@@ -91,10 +91,10 @@ const SearchBar = () => {
             
             {searchQuery.trim().length >= 2 && (
               <Link
-                to={`/courses?q=${encodeURIComponent(searchQuery)}`}
+                to={`/courses?search=${encodeURIComponent(searchQuery)}`}
                 className="block text-center px-4 py-3 text-sm text-primary-600 dark:text-primary-400 hover:bg-gray-50 dark:hover:bg-gray-700 border-t border-gray-100 dark:border-gray-700"
               >
-                See all results for "{searchQuery}"
+                See all results for &quot;{searchQuery}&quot;
               </Link>
             )}
           </div>

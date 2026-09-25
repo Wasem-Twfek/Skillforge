@@ -49,9 +49,9 @@ const Login: React.FC = () => {
         console.log('Login successful, redirecting to:', from);
         navigate(from, { replace: true });
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Authentication error:', err);
-      setFormError(err.message || 'Failed to log in. Please try again.');
+      setFormError(err instanceof Error ? err.message : 'Failed to log in. Please try again.');
     }
   };
 

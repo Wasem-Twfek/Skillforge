@@ -39,8 +39,8 @@ const metrics: PerformanceMetrics = {
  */
 export function initPerformanceMonitoring(): void {
   // Only run in production or when explicitly enabled
-  if (process.env.NODE_ENV !== 'production' && 
-      (import.meta as any).env?.VITE_ENABLE_PERFORMANCE_MONITORING !== 'true') {
+  if (process.env.NODE_ENV !== 'production' &&
+      import.meta.env?.VITE_ENABLE_PERFORMANCE_MONITORING !== 'true') {
     console.log('Performance monitoring disabled in development mode');
     return;
   }
@@ -71,22 +71,32 @@ export function initPerformanceMonitoring(): void {
       lcpObserver.observe({ type: 'largest-contentful-paint', buffered: true });
       
       // First Input Delay
+      // First Input Delay: PerformanceEntry does not declare these
+      // web-vital fields, so narrow with a minimal local interface.
+      interface FirstInputEntry extends PerformanceEntry {
+        processingStart: number;
+      }
       const fidObserver = new PerformanceObserver((entryList) => {
         const entries = entryList.getEntries();
         if (entries.length > 0) {
-          const fid = entries[0];
-          metrics.FID = (fid as any).processingStart - (fid as any).startTime;
+          const fid = entries[0] as FirstInputEntry;
+          metrics.FID = fid.processingStart - fid.startTime;
           console.log(`FID: ${metrics.FID}ms`);
         }
       });
       fidObserver.observe({ type: 'first-input', buffered: true });
       
-      // Layout Shifts
+      // Layout Shifts: narrow with a minimal local interface.
+      interface LayoutShiftEntry extends PerformanceEntry {
+        hadRecentInput: boolean;
+        value: number;
+      }
       let cumulativeLayoutShift = 0;
       const clsObserver = new PerformanceObserver((entryList) => {
-        for (const entry of entryList.getEntries()) {
-          if (!(entry as any).hadRecentInput) {
-            cumulativeLayoutShift += (entry as any).value;
+        for (const rawEntry of entryList.getEntries()) {
+          const entry = rawEntry as LayoutShiftEntry;
+          if (!entry.hadRecentInput) {
+            cumulativeLayoutShift += entry.value;
             metrics.CLS = cumulativeLayoutShift;
           }
         }
@@ -160,19 +170,25 @@ export function getPerformanceMetrics(): PerformanceMetrics {
  * @param componentName The name of the component
  */
 export function useRenderTimeTracking(componentName: string): void {
-  const monitoringEnabled =
+  // The hook itself must run unconditionally; the enabled check lives
+  // inside the effect so hook order never changes between renders.
+  const enabled =
     process.env.NODE_ENV === 'production' ||
-    (import.meta as any).env?.VITE_ENABLE_PERFORMANCE_MONITORING === 'true';
+    import.meta.env?.VITE_ENABLE_PERFORMANCE_MONITORING === 'true';
 
-  const startTime = React.useRef(performance.now());
+  const startTime = performance.now();
 
+  // Use React's layout effect to measure render time
   React.useLayoutEffect(() => {
-    if (!monitoringEnabled) {
+    if (!enabled) {
       return;
     }
+    trackRenderTime(componentName, startTime);
 
-    trackRenderTime(componentName, startTime.current);
-  }, [componentName, monitoringEnabled]);
+    return () => {
+      // Track unmount time if needed
+    };
+  }, [componentName, startTime, enabled]);
 }
 
 // Initialize performance monitoring when this module is imported

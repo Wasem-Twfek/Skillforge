@@ -31,6 +31,8 @@ const Profile: React.FC = () => {
     setIsEditing(true);
   }, []);
 
+  // This hook must run unconditionally on every render (before the early
+  // returns below) so hook order stays stable across loading states.
   const {
     inProgressCourses,
     completedCourses,
@@ -39,12 +41,12 @@ const Profile: React.FC = () => {
   } = useMemo(() => {
     const courseArray: CourseState[] = Array.isArray(userCourses) ? userCourses : [];
     return {
+      courses: courseArray,
       inProgressCourses: courseArray.filter((course) => course.progress > 0 && course.progress < 100),
       completedCourses: courseArray.filter((course) => course.progress === 100),
       notStartedCourses: courseArray.filter((course) => course.progress === 0),
-      totalProgress: courseArray.length
-        ? courseArray.reduce((acc, course) => acc + course.progress, 0) / courseArray.length
-        : 0
+      totalProgress: courseArray.length ?
+        courseArray.reduce((acc, course) => acc + course.progress, 0) / courseArray.length : 0
     };
   }, [userCourses]);
 

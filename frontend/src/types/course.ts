@@ -2,7 +2,9 @@ export interface Lesson {
   id: string;
   title: string;
   description: string;
-  duration: number; // in minutes
+  // The backend Lesson has no duration column; the API never returns it.
+  // Present only in local mock/demo data.
+  duration?: number; // in minutes
   content: string;
   videoUrl?: string;
   resources?: {
@@ -25,20 +27,26 @@ export interface Course {
   title: string;
   description: string;
   thumbnail: string;
-  category: 'programming' | 'design' | 'business' | 'marketing' | 'language';
-  level: 'beginner' | 'intermediate' | 'advanced';
+  // The backend stores category/level as free text (e.g. "Web Development",
+  // "Beginner"), not as a closed union.
+  category: string;
+  level: string;
   instructor: {
     id: string;
     name: string;
-    avatar: string;
-    bio: string;
+    // Nullable in the backend (User.avatar / User.bio are optional columns).
+    avatar: string | null;
+    bio: string | null;
   };
-  rating: number;
-  reviews: number;
-  students: number;
-  price: number;
+  // The backend Course has none of these commerce/engagement columns; the
+  // API never returns them. Present only in local mock/demo data, so every
+  // API-fed reader must handle their absence (no invented defaults).
+  rating?: number;
+  reviews?: number;
+  students?: number;
+  price?: number;
   lessons: Lesson[];
-  tags: string[];
+  tags?: string[];
   createdAt: string;
   updatedAt: string;
 } 

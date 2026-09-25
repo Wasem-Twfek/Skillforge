@@ -1,10 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
-import { PrismaClient } from '@prisma/client';
+import prisma from '../lib/prisma';
 import { config } from '../config/config';
-
-// Create Prisma client instance
-const prisma = new PrismaClient();
 
 // Define the shape of the user we attach to the request (matches the select below)
 type AuthenticatedUser = {
@@ -27,17 +24,18 @@ declare global {
 }
 
 export const authenticate = async (req: Request, res: Response, next: NextFunction) => {
-	console.log('Auth middleware - Headers:', req.headers);
-	console.log('Auth middleware - Token:', req.headers.authorization?.split(' ')[1]);
 	try {
-		const token = req.headers.authorization?.split(' ')[1];
+		// Enforce the Bearer scheme the frontend always sends (see the axios
+		// interceptor and AuthContext): no scheme check would accept any
+		// "<anything> <token>" header shape.
+		const parts = req.headers.authorization?.split(' ');
+		const token = parts?.length === 2 && parts[0] === 'Bearer' ? parts[1] : undefined;
 
 		if (!token) {
 			return res.status(401).json({ error: 'No token provided' });
 		}
 
 		const decoded = jwt.verify(token, config.JWT_SECRET) as { id: string };
-		console.log('Auth middleware - Decoded token:', decoded);
 		
 		const user = await prisma.user.findUnique({
 			where: { id: decoded.id },
@@ -52,8 +50,6 @@ export const authenticate = async (req: Request, res: Response, next: NextFuncti
 			},
 		});
 		
-		console.log('Auth middleware - Found user:', user);
-
 		if (!user) {
 			return res.status(401).json({ error: 'User not found' });
 		}
@@ -61,7 +57,7 @@ export const authenticate = async (req: Request, res: Response, next: NextFuncti
 		req.user = user as AuthenticatedUser;
 		next();
 	} catch (error) {
-		console.error('Authentication error:', error);
+		console.error('Authentication error:', error instanceof Error ? error.message : 'unknown error');
 		res.status(401).json({ error: 'Invalid token' });
 	}
 };

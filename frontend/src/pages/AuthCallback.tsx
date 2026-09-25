@@ -44,9 +44,9 @@ const AuthCallback: React.FC = () => {
           setError('No authentication data received.');
           setStatus('Authentication failed.');
         }
-      } catch (err: any) {
+      } catch (err: unknown) {
         console.error('AuthCallback: Error during authentication:', err);
-        setError(err.message || 'Authentication failed');
+        setError(err instanceof Error ? err.message : 'Authentication failed');
         setStatus('Authentication failed.');
       }
     };

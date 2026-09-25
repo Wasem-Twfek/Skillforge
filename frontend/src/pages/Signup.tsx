@@ -65,7 +65,7 @@ const Signup: React.FC = () => {
     confirmPassword?: string;
   }>({});
   
-  const { register, isLoading, error, clearError } = useAuth();
+  const { register, loginWithGoogle, isLoading, error, clearError } = useAuth();
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -119,8 +119,9 @@ const Signup: React.FC = () => {
   const handleGoogleSignIn = () => {
     clearError();
     setFormError(null);
-    // Using the existing Google Sign-In functionality
-    window.location.href = `${(import.meta as any).env?.VITE_API_URL || 'http://localhost:3001'}/auth/google`;
+    // Use the canonical frontend-facing auth prefix (/api/auth/*), resolved
+    // through the dev proxy and the production nginx rewrite alike.
+    loginWithGoogle();
   };
   
   const handleSubmit = async (e: React.FormEvent) => {

@@ -1,10 +1,9 @@
 import express from 'express';
-import { PrismaClient } from '@prisma/client';
+import prisma from '../lib/prisma';
 import { Request, Response, NextFunction } from 'express';
 import { authenticate } from '../middleware/auth';
 
 const router = express.Router();
-const prisma = new PrismaClient();
 
 // Get all courses
 router.get('/', async (req, res) => {
@@ -15,6 +14,8 @@ router.get('/', async (req, res) => {
           select: {
             id: true,
             name: true,
+            avatar: true,
+            bio: true,
           },
         },
         lessons: true,
@@ -27,7 +28,12 @@ router.get('/', async (req, res) => {
         title: course.title,
         description: course.description,
         thumbnail: course.thumbnail,
-        instructor: course.instructor.name,
+        instructor: {
+          id: course.instructor.id,
+          name: course.instructor.name,
+          avatar: course.instructor.avatar,
+          bio: course.instructor.bio,
+        },
         category: course.category,
         level: course.level,
         lessons: course.lessons,
@@ -36,25 +42,19 @@ router.get('/', async (req, res) => {
 
     res.json(updatedCourses);
   } catch (error) {
-    console.error('Error fetching courses:', error);
+    console.error('Error fetching courses:', error instanceof Error ? error.message : 'unknown error');
     res.status(500).json({ error: 'Failed to fetch courses' });
   }
 });
 
 // Get user's enrolled courses
 router.get('/user', authenticate, async (req: Request, res) => {
-  console.log('[/api/courses/user] Request received');
-  console.log('[/api/courses/user] Headers:', req.headers);
-  console.log('[/api/courses/user] User:', req.user);
-  
   try {
     const userId = req.user?.id;
     if (!userId) {
       console.error('[/api/courses/user] No user ID found in request');
       return res.status(401).json({ error: 'User not authenticated' });
     }
-    
-    console.log('[/api/courses/user] Fetching enrollments for user:', userId);
 
     const enrollments = await prisma.enrollment.findMany({
       where: {
@@ -67,6 +67,8 @@ router.get('/user', authenticate, async (req: Request, res) => {
               select: {
                 id: true,
                 name: true,
+                avatar: true,
+                bio: true,
               },
             },
             lessons: true,
@@ -86,7 +88,12 @@ router.get('/user', authenticate, async (req: Request, res) => {
         title: enrollment.course.title,
         description: enrollment.course.description,
         thumbnail: enrollment.course.thumbnail,
-        instructor: enrollment.course.instructor.name,
+        instructor: {
+          id: enrollment.course.instructor.id,
+          name: enrollment.course.instructor.name,
+          avatar: enrollment.course.instructor.avatar,
+          bio: enrollment.course.instructor.bio,
+        },
         progress: Math.round(progress),
         enrolledAt: enrollment.enrolledAt,
         category: enrollment.course.category,
@@ -96,8 +103,22 @@ router.get('/user', authenticate, async (req: Request, res) => {
 
     res.json(userCourses);
   } catch (error) {
-    console.error('Error fetching user courses:', error);
+    console.error('Error fetching user courses:', error instanceof Error ? error.message : 'unknown error');
     res.status(500).json({ error: 'Failed to fetch user courses' });
+  }
+});
+
+// Get all lessons for a course (used by the course detail UI)
+router.get('/:id/lessons', async (req, res) => {
+  try {
+    const lessons = await prisma.lesson.findMany({
+      where: { courseId: req.params.id },
+      orderBy: { order: 'asc' },
+    });
+    res.json(lessons);
+  } catch (error) {
+    console.error('Error fetching course lessons:', error instanceof Error ? error.message : 'unknown error');
+    res.status(500).json({ error: 'Failed to fetch course lessons' });
   }
 });
 
@@ -111,9 +132,16 @@ router.get('/:id', async (req, res) => {
           select: {
             id: true,
             name: true,
+            avatar: true,
+            bio: true,
           },
         },
-        lessons: true,
+        lessons: {
+          orderBy: { order: 'asc' },
+          include: {
+            quiz: true,
+          },
+        },
       },
     });
     if (!course) {
@@ -121,7 +149,7 @@ router.get('/:id', async (req, res) => {
     }
     res.json(course);
   } catch (error) {
-    console.error('Error fetching course:', error);
+    console.error('Error fetching course:', error instanceof Error ? error.message : 'unknown error');
     res.status(500).json({ error: 'Failed to fetch course' });
   }
 });
@@ -171,7 +199,7 @@ router.post('/:id/enroll', authenticate, async (req: Request, res) => {
       enrollment,
     });
   } catch (error) {
-    console.error('Error enrolling in course:', error);
+    console.error('Error enrolling in course:', error instanceof Error ? error.message : 'unknown error');
     res.status(500).json({ error: 'Failed to enroll in course' });
   }
 });
@@ -230,11 +258,13 @@ router.post('/:id/progress', authenticate, async (req: Request, res) => {
       },
     });
 
-    const progress = Math.round((completedLessons / totalLessons) * 100);
+    // Guard against division by zero: a course with no lessons would
+    // otherwise yield NaN (0/0), which serializes to null in JSON.
+    const progress = totalLessons > 0 ? Math.round((completedLessons / totalLessons) * 100) : 0;
 
     res.json({ progress });
   } catch (error) {
-    console.error('Error updating course progress:', error);
+    console.error('Error updating course progress:', error instanceof Error ? error.message : 'unknown error');
     res.status(500).json({ error: 'Failed to update course progress' });
   }
 });

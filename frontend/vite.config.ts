@@ -12,49 +12,68 @@ export default defineConfig({
       injectRegister: 'auto',
       strategies: 'generateSW',
       registerType: 'prompt',
-      includeAssets: ['icons/apple-touch-icon.png', 'icons/masked-icon.svg'],
+      includeAssets: ['vite.svg', 'icons/apple-touch-icon.png', 'icons/masked-icon.svg'],
       manifest: {
         name: 'SkillForge',
         short_name: 'SkillForge',
         description: 'Interactive learning platform for mastering in-demand skills',
+        start_url: '/',
+        scope: '/',
+        display: 'standalone',
+        background_color: '#ffffff',
         theme_color: '#3b82f6',
         icons: [
           {
             src: '/icons/icon-192x192.png',
             sizes: '192x192',
             type: 'image/png',
-            purpose: 'any maskable'
+            purpose: 'any'
           },
           {
             src: '/icons/icon-512x512.png',
             sizes: '512x512',
             type: 'image/png',
-            purpose: 'any maskable'
+            purpose: 'any'
+          },
+          {
+            src: '/icons/maskable-192.png',
+            sizes: '192x192',
+            type: 'image/png',
+            purpose: 'maskable'
+          },
+          {
+            src: '/icons/maskable-512.png',
+            sizes: '512x512',
+            type: 'image/png',
+            purpose: 'maskable'
+          }
+        ],
+        screenshots: [
+          {
+            src: '/screenshots/desktop.svg',
+            sizes: '1920x1080',
+            type: 'image/svg+xml',
+            form_factor: 'wide',
+            label: 'SkillForge Desktop View'
+          },
+          {
+            src: '/screenshots/mobile.svg',
+            sizes: '1080x1920',
+            type: 'image/svg+xml',
+            form_factor: 'narrow',
+            label: 'SkillForge Mobile View'
           }
         ]
       },
       workbox: {
         globPatterns: ['**/*.{js,css,html,ico,png,svg,json,vue,txt,woff2}'],
-        globDirectory: './dist',
+        // Backend-owned OAuth navigation paths must reach the network: the
+        // default NavigationRoute would otherwise serve cached index.html for
+        // /auth/google/callback (the provider redirect target), so the
+        // callback never reaches the backend in SW-controlled browsers and
+        // the SPA falls through to "/". /auth/callback stays SPA-served.
+        navigateFallbackDenylist: [/^\/auth\/google/],
         runtimeCaching: [
-          {
-            urlPattern: ({ url }) => {
-              // Use (import.meta as any).env for TS compatibility
-              const apiUrl = (import.meta as any).env?.VITE_API_URL || 'http://localhost:3001';
-              return url.origin === apiUrl;
-            },
-            handler: 'StaleWhileRevalidate', // Better for API calls
-            options: {
-              cacheName: 'api-cache',
-              expiration: {
-                maxEntries: 50,
-                maxAgeSeconds: 60 * 60 * 24 // 1 day
-              },
-              cacheableResponse: {
-                statuses: [0, 200]
-              }
-            }
-          },
           // Add image caching strategy
           {
             urlPattern: /\.(?:png|jpg|jpeg|svg|gif)$/,
@@ -128,7 +147,10 @@ export default defineConfig({
       '/api': {
         target: process.env.VITE_API_URL || 'http://localhost:3001',
         changeOrigin: true,
-        secure: false
+        secure: false,
+        // Mirror the production nginx rewrite (/api/auth/* -> /auth/*) so the
+        // canonical frontend-facing auth prefix resolves the same way in dev.
+        rewrite: (path) => path.replace(/^\/api\/auth\//, '/auth/')
       },
       '/auth': {
         target: process.env.VITE_API_URL || 'http://localhost:3001',

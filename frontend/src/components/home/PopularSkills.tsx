@@ -15,7 +15,7 @@ const PopularSkills = () => {
     // In a real app, we might fetch this from an API
     // For now, let's filter the top 8 courses by students count
     const topCourses = [...mockCourses]
-      .sort((a, b) => b.students - a.students)
+      .sort((a, b) => (b.students ?? 0) - (a.students ?? 0))
       .slice(0, 8);
     
     setPopularCourses(topCourses);
@@ -148,8 +148,8 @@ const SkillCard = ({ course }: { course: Course }) => {
         <h3 className="font-bold text-lg mb-1 text-gray-900 dark:text-white line-clamp-1">{course.title}</h3>
         
         <div className="flex items-center mt-4">
-          <img 
-            src={course.instructor.avatar} 
+          <img
+            src={course.instructor.avatar ?? undefined}
             alt={course.instructor.name}
             className="w-8 h-8 rounded-full mr-2"
             onError={(e) => {
@@ -159,7 +159,7 @@ const SkillCard = ({ course }: { course: Course }) => {
           <div className="text-sm">
             <span className="text-gray-900 dark:text-white font-medium">{course.instructor.name}</span>
             <div className="flex items-center text-gray-500 dark:text-gray-400">
-              <span>{course.students.toLocaleString()} students</span>
+              <span>{(course.students ?? 0).toLocaleString()} students</span>
             </div>
           </div>
         </div>

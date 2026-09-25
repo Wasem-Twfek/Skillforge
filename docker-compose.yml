@@ -1,6 +1,5 @@
-version: '3.8'
-
 services:
+  # PostgreSQL Database
   postgres:
     image: postgres:16-alpine
     container_name: skillforge-postgres
@@ -13,12 +12,16 @@ services:
     ports:
       - "5432:5432"
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      # Interpolate the configured user/db: a hardcoded -U postgres would
+      # never become healthy when POSTGRES_USER is overridden (that role
+      # then does not exist), blocking every depends_on: healthy consumer.
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-skillforge}"]
       interval: 10s
       timeout: 5s
       retries: 5
     restart: unless-stopped
 
+  # Redis for caching (used by ioredis in backend)
   redis:
     image: redis:alpine
     container_name: skillforge-redis
@@ -28,6 +31,7 @@ services:
       - redis-data:/data
     restart: unless-stopped
 
+  # Backend service
   backend:
     build:
       context: ./skillforge-backend
@@ -36,11 +40,14 @@ services:
     environment:
       - NODE_ENV=production
       - DOCKER=true
+      # POSTGRES_* defaults below are local-dev convenience only.
+      # Override them in production via root .env (see .env.example).
       - DATABASE_URL=postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@postgres:5432/${POSTGRES_DB:-skillforge}?schema=public
       - REDIS_URL=redis://redis:6379
       - PORT=3001
-      - JWT_SECRET=${JWT_SECRET:?JWT_SECRET must be set}
-      - SESSION_SECRET=${SESSION_SECRET:?SESSION_SECRET must be set}
+      # No insecure default on purpose: the backend fails fast at startup when
+      # JWT_SECRET is missing in production. Set it via env / root .env.
+      - JWT_SECRET=${JWT_SECRET:-}
       - FRONTEND_URL=http://localhost
       - GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID:-}
       - GOOGLE_CLIENT_SECRET=${GOOGLE_CLIENT_SECRET:-}
@@ -52,9 +59,19 @@ services:
         condition: service_healthy
       redis:
         condition: service_started
+    # Backend readiness mirrors the existing DB-checking GET /health route:
+    # 2xx only when PostgreSQL is reachable. Gives operators (and compose)
+    # a truthful signal instead of "running means ready".
+    healthcheck:
+      test: ["CMD-SHELL", "node -e \"fetch('http://127.0.0.1:3001/health').then(function(r){process.exit(r.ok?0:1)}).catch(function(){process.exit(1)})\""]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 60s
     restart: unless-stopped
     command: sh -c "npx prisma generate && npx prisma migrate deploy && node dist/server.js"
 
+  # Frontend service with Nginx
   frontend:
     build:
       context: ./

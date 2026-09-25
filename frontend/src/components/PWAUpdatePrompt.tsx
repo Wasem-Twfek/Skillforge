@@ -13,6 +13,19 @@ const PWAUpdatePrompt: React.FC = () => {
     onRegisterError(error: Error) {
       console.log('SW registration error', error);
     },
+    onOfflineReady() {
+      console.log('App ready to work offline');
+      const offlineToast = document.createElement('div');
+      offlineToast.className = 'offline-toast';
+      offlineToast.textContent = 'App ready for offline use';
+      document.body.appendChild(offlineToast);
+
+      setTimeout(() => {
+        if (offlineToast.parentNode) {
+          document.body.removeChild(offlineToast);
+        }
+      }, 3000);
+    },
   });
 
   useEffect(() => {
